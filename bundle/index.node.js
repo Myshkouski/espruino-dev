@@ -79,6 +79,12 @@ if (!global.LED1) global.LED1 = {
 	}
 };
 
+var stream = new _stream.Readable({
+	read: function read() {
+		console.log("!", arguments);
+	}
+});
+
 stream.pipe(new _stream.Writable({
 	write: function write(data) {
 		console.log(data);

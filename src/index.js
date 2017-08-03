@@ -5,6 +5,12 @@ if(!global.Buffer && global.ArrayBuffer)
 if(!global.LED1)
 	global.LED1 = { write(value) { console.log('LED1', value ? '+' : '-') } }
 
+const stream = new Readable({
+	read() {
+		console.log("!", arguments)
+	}
+})
+
 stream.pipe(new Writable({
 	write(data) {
 		console.log(data)
