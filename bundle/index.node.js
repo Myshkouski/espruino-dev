@@ -268,47 +268,30 @@ bus.setup(115200, {
 var wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
 var c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION]);
 
-if (!global.LED1) global.LED1 = {
-  write: function write(value) {
-    console.log('LED1', value ? '+' : '-');
-  }
-};
-
-var stream = new _stream.Readable({
+var readable = new _stream.Readable({
   read: function read() {
     var _this = this;
 
-    var listener = function listener(d) {
+    bus.on('data', function (d) {
       return _this.push(d);
-    };
-    bus.on('data', listener);
+    });
   }
 });
 
-stream.pipe(new _stream.Writable({
-  write: function write(data) {
+var writable = new _stream.Writable({
+  write: function write(data, encoding, cb) {
     LED1.write(true);
     setTimeout(function () {
       return LED1.write(false);
     }, 50);
-    console.log(data);
+    cb();
   }
-}));
+});
 
-//stream.pause()
+readable.pipe(writable);
 
-
-/*
-const stream = new Readable()
-
-stream.on('data', data => {
-	LED1.write(true)
-	setTimeout(() => LED1.write(false), 200)
-})
-*/
 setInterval(function () {
-  bus.write(wakeup);
-  bus.write(c);
+  writable.write('!');
 }, 1000);
 
 /***/ }),
