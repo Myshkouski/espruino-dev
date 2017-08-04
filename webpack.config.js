@@ -77,7 +77,15 @@ espruinoBundleConfig.plugins.push(new webpack.ProvidePlugin({
 	'Buffer': resolve(__dirname, 'lib/buffer')
 }))
 
-espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin())
+espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin({
+	compress: {
+		keep_fnames: true
+	},
+	mangle: {
+		keep_classnames: true,
+		keep_fnames: true
+	}
+}))
 
 const nodeBundleConfig = merge({
 	target: 'node',
