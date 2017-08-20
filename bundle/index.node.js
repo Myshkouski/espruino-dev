@@ -128,7 +128,7 @@ var CONSTANTS = {
   PN532_I2C_READYTIMEOUT: 20,
 
   /*PN532_MIFARE_ISO14443A              : 0x00,
-    // Mifare Commands
+   // Mifare Commands
   MIFARE_CMD_AUTH_A                   : 0x60,
   MIFARE_CMD_AUTH_B                   : 0x61,
   MIFARE_CMD_READ                     : 0x30,
@@ -137,7 +137,7 @@ var CONSTANTS = {
   MIFARE_CMD_DECREMENT                : 0xC0,
   MIFARE_CMD_INCREMENT                : 0xC1,
   MIFARE_CMD_RESTORE                  : 0xC2,
-    // Prefixes for NDEF Records : to identify record type,
+   // Prefixes for NDEF Records : to identify record type,
   NDEF_URIPREFIX_NONE                 : 0x00,
   NDEF_URIPREFIX_HTTP_WWWDOT          : 0x01,
   NDEF_URIPREFIX_HTTPS_WWWDOT         : 0x02,
@@ -174,7 +174,7 @@ var CONSTANTS = {
   NDEF_URIPREFIX_URN_EPC_RAW          : 0x21,
   NDEF_URIPREFIX_URN_EPC              : 0x22,
   NDEF_URIPREFIX_URN_NFC              : 0x23,
-    PN532_GPIO_VALIDATIONBIT            : 0x80,
+   PN532_GPIO_VALIDATIONBIT            : 0x80,
   PN532_GPIO_P30                      : 0,
   PN532_GPIO_P31                      : 1,
   PN532_GPIO_P32                      : 2,
@@ -259,40 +259,34 @@ I2C1.writeTo(C.PN532_I2C_ADDRESS, cmd([C.PN532_COMMAND_GETFIRMWAREVERSION], 12))
 console.log(I2C1.readFrom(C.PN532_I2C_ADDRESS, 6));
 */
 
-var bus = Serial.find(B7);
+/*
+const bus = Serial.find(B7);
 
 bus.setup(115200, {
   rx: B7, tx: B6
 });
 
-var wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-var c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION]);
+const wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+const c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION]);
+*/
 
 var readable = new _stream.Readable({
   read: function read() {
-    var _this = this;
-
-    bus.on('data', function (d) {
-      return _this.push(d);
-    });
+    this.push('1');
+    this.push('2');
+    this.push(null);
   }
 });
 
 var writable = new _stream.Writable({
   write: function write(data, encoding, cb) {
-    LED1.write(true);
-    setTimeout(function () {
-      return LED1.write(false);
-    }, 50);
+    console.log('!', data, encoding);
     cb();
   }
 });
 
+var ui8a = new Uint8Array([]);
 readable.pipe(writable);
-
-setInterval(function () {
-  writable.write('!');
-}, 1000);
 
 /***/ }),
 /* 1 */

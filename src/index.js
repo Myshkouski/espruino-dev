@@ -163,6 +163,7 @@ I2C1.writeTo(C.PN532_I2C_ADDRESS, cmd([C.PN532_COMMAND_GETFIRMWAREVERSION], 12))
 console.log(I2C1.readFrom(C.PN532_I2C_ADDRESS, 6));
 */
 
+/*
 const bus = Serial.find(B7);
 
 bus.setup(115200, {
@@ -171,23 +172,22 @@ bus.setup(115200, {
 
 const wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
 const c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION]);
+*/
 
 const readable = new Readable({
 	read() {
-		bus.on('data', d => this.push(d))
+    this.push('1')
+    this.push('2')
+    this.push(null)
 	}
 })
 
 const writable = new Writable({
 	write(data, encoding, cb) {
-    LED1.write(true)
-  	setTimeout(() => LED1.write(false), 50)
-    cb()
+		console.log('!', data, encoding)
+		cb()
 	}
 })
 
+const ui8a = new Uint8Array([])
 readable.pipe(writable)
-
-setInterval(() => {
-  writable.write('!')
-}, 1000)
