@@ -43,7 +43,7 @@ const sharedConfig = {
 					plugins: [
 						//modules
 						"add-module-exports",
-						"transform-es2015-modules-commonjs",
+						//"transform-es2015-modules-commonjs",
 
 						//syntax
 						"transform-object-rest-spread"
@@ -61,7 +61,7 @@ const sharedConfig = {
 const espruinoBundleConfig = merge({
 	//target: 'node',
 	node: {
-		//Buffer: true,
+		Buffer: false,
 		process: false
 	},
 
