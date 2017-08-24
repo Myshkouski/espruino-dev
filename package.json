@@ -19,7 +19,9 @@
     "webpack": "^3.4.1",
     "yaml-loader": "^0.5.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "uglifyjs-webpack-plugin": "^0.4.6"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

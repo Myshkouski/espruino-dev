@@ -71,7 +71,7 @@ const espruinoBundleConfig = merge({
 
 	resolve: {
 		alias: {
-			//'events': resolve(__approot, 'lib/events'),
+			'events': resolve(__approot, 'lib/events'),
 			'stream': resolve(__approot, 'lib/stream'),
 			'buffer': resolve(__approot, 'lib/buffer')
 		}
@@ -85,19 +85,17 @@ espruinoBundleConfig.plugins.push(new webpack.ProvidePlugin({
 	'setImmediate': resolve(__approot, 'lib/setImmediate')
 }))
 
-/*
-
 espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin({
-	compress: {
+	/*compress: {
 		keep_fnames: true
 	},
 	mangle: {
 		keep_classnames: true,
 		keep_fnames: true
-	}
+	}*/
 }))
 
-*/
+
 
 const nodeBundleConfig = merge({
 	target: 'node',
