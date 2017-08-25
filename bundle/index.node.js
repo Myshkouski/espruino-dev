@@ -214,30 +214,34 @@ var cmd = function cmd(c, readBytes) {
 };
 
 /*
-I2C1.setup({scl:B6, sda:B7});
-I2C1.writeTo(C.PN532_I2C_ADDRESS, cmd([C.PN532_COMMAND_GETFIRMWAREVERSION], 12));
-console.log(I2C1.readFrom(C.PN532_I2C_ADDRESS, 6));
+I2C1.setup({scl:B6, sda:B7})
+I2C1.writeTo(C.PN532_I2C_ADDRESS, cmd([C.PN532_COMMAND_GETFIRMWAREVERSION], 12))
+console.log(I2C1.readFrom(C.PN532_I2C_ADDRESS, 6))
 */
 
 /*
-const bus = Serial.find(B7);
+const bus = Serial.find(B7)
 
 bus.setup(115200, {
   rx: B7, tx: B6
-});
+})
 
-const wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-const c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION]);
+const wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+const c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION])
 */
 
-//readable.pipe(writable)
+var w = new _stream.Writable({
+  write: function write(d, e, cb) {
+    //'ABC'.charCodeAt(0) => 65
+    //String.fromCharCode(65) => 'A'
+    console.log(d.toString());
+    cb();
+  }
+});
 
-var on = false;
+w.write('asddsa');
 
-setInterval(function () {
-  on = !on;
-  LED2.write(on);
-}, 1000);
+w.write('asddsa');
 
 /***/ }),
 /* 1 */

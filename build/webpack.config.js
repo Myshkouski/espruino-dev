@@ -84,17 +84,17 @@ espruinoBundleConfig.plugins.push(new webpack.ProvidePlugin({
 	'process': resolve(__approot, 'lib/process'),
 	'setImmediate': resolve(__approot, 'lib/setImmediate')
 }))
-
+/*
 espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin({
-	/*compress: {
-		keep_fnames: true
+	compress: {
+		//keep_fnames: true
 	},
 	mangle: {
-		keep_classnames: true,
-		keep_fnames: true
-	}*/
+		//keep_classnames: true,
+		//keep_fnames: true
+	}
 }))
-
+*/
 
 
 const nodeBundleConfig = merge({
