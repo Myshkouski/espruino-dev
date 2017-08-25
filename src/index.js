@@ -126,68 +126,49 @@ const CONSTANTS = {
   NFC_WAIT_TIME                      : 30,
   NFC_CMD_BUF_LEN                    : 64,
   NFC_FRAME_ID_INDEX                 : 6
-};
+}
 
 const cmd = function(c, readBytes) {
   var i,arr = [CONSTANTS.PN532_PREAMBLE,CONSTANTS.PN532_STARTCODE1,CONSTANTS.PN532_STARTCODE2,
-     c.length+1,(~c.length)&0xFF, CONSTANTS.PN532_HOSTTOPN532];
-  for (i in c) arr.push(c[i]);
-  var checksum = -arr[0];
+     c.length+1,(~c.length)&0xFF, CONSTANTS.PN532_HOSTTOPN532]
+  for (i in c) arr.push(c[i])
+  var checksum = -arr[0]
   for (i in arr)
-    checksum+=arr[i];
-  arr.push((~checksum) & 0xFF);
-  checksum=0;
+    checksum+=arr[i]
+  arr.push((~checksum) & 0xFF)
+  checksum=0
   for (i in arr)
-    checksum+=arr[i];
-  arr.push(CONSTANTS.PN532_POSTAMBLE);
-  return new Uint8Array(arr);
-};
-
-const toBinaryArray = () => {
-  let totalLength = 0;
-  for (let arr of arrays) {
-    totalLength += arr.length;
-  }
-  let result = new resultConstructor(totalLength);
-  let offset = 0;
-  for (let arr of arrays) {
-    result.set(arr, offset);
-    offset += arr.length;
-  }
-  return result;
-};
+    checksum+=arr[i]
+  arr.push(CONSTANTS.PN532_POSTAMBLE)
+  return new Uint8Array(arr)
+}
 
 /*
-I2C1.setup({scl:B6, sda:B7});
-I2C1.writeTo(C.PN532_I2C_ADDRESS, cmd([C.PN532_COMMAND_GETFIRMWAREVERSION], 12));
-console.log(I2C1.readFrom(C.PN532_I2C_ADDRESS, 6));
+I2C1.setup({scl:B6, sda:B7})
+I2C1.writeTo(C.PN532_I2C_ADDRESS, cmd([C.PN532_COMMAND_GETFIRMWAREVERSION], 12))
+console.log(I2C1.readFrom(C.PN532_I2C_ADDRESS, 6))
 */
 
 /*
-const bus = Serial.find(B7);
+const bus = Serial.find(B7)
 
 bus.setup(115200, {
   rx: B7, tx: B6
-});
+})
 
-const wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-const c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION]);
+const wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+const c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION])
 */
 
-const readable = new Readable({
-	read() {
-    this.push('1')
-    this.push('2')
-    this.push(null)
-	}
+const w = new Writable({
+  write(d, e, cb) {
+    //'ABC'.charCodeAt(0) => 65
+    //String.fromCharCode(65) => 'A'
+    console.log(d.toString())
+    cb()
+  }
 })
 
-const writable = new Writable({
-	write(data, encoding, cb) {
-		console.log('!', data, encoding)
-		cb()
-	}
-})
+w.write('asddsa')
 
-const ui8a = new Uint8Array([])
-readable.pipe(writable)
+w.write('asddsa')
