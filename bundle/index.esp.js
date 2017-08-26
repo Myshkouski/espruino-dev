@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 8);
+/******/ 	return __webpack_require__(__webpack_require__.s = 9);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -68,16 +68,33 @@
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process, setImmediate) {
+
 
 exports.__esModule = true;
-if (!process.nextTick) {
-  process.nextTick = setImmediate;
-}
+exports.default = extend;
+function extend(Super) {
+  var Child = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function Child() {};
+  var apply = arguments[2];
 
-exports.default = process;
-module.exports = exports["default"];
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(9)))
+  var Proto = function Proto() {};
+  Proto.prototype = Super.prototype;
+
+  //Child.prototype = new Proto()
+  //Child.prototype.constructor = Child
+
+  function Extended() {
+    apply === true && Super.apply(this, arguments);
+    Child.apply(this, arguments);
+  }
+
+  Extended.prototype = new Proto();
+  Object.defineProperty(Extended.prototype, 'constructor', {
+    value: Child
+  });
+
+  return Extended;
+}
+module.exports = exports['default'];
 
 /***/ }),
 /* 1 */
@@ -87,41 +104,8 @@ module.exports = exports["default"];
 
 
 exports.__esModule = true;
-exports.default = extend;
-function extend(Super) {
-   var Child = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function Child() {};
-   var apply = arguments[2];
 
-   var Proto = function Proto() {};
-   Proto.prototype = Super.prototype;
-
-   //Child.prototype = new Proto()
-   //Child.prototype.constructor = Child
-
-   function Extended() {
-      apply === true && Super.apply(this, arguments);
-      Child.apply(this, arguments);
-   }
-
-   Extended.prototype = new Proto();
-   Object.defineProperty(Extended.prototype, 'constructor', {
-      value: Child
-   });
-
-   return Extended;
-}
-module.exports = exports['default'];
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-exports.__esModule = true;
-
-var _to = __webpack_require__(5);
+var _to = __webpack_require__(4);
 
 function _createBuffer() {
 	var iterable = (0, _to.toBuffer)(arguments[0]);
@@ -200,24 +184,23 @@ exports.default = Buffer;
 module.exports = exports['default'];
 
 /***/ }),
-/* 3 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+/* WEBPACK VAR INJECTION */(function(process, setImmediate) {
 
+exports.__esModule = true;
+if (!process.nextTick) {
+  process.nextTick = setImmediate;
+}
 
-var on = Object.prototype.on;
-
-Object.prototype.on = function () {
-	on.apply(this, arguments);
-
-	return this;
-};
-
-module.exports = Object;
+exports.default = process;
+module.exports = exports["default"];
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2), __webpack_require__(5)))
 
 /***/ }),
-/* 4 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -230,12 +213,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 var _stream = __webpack_require__(6);
 
 var _stream2 = _interopRequireDefault(_stream);
-
-var _events = __webpack_require__(3);
-
-var _events2 = _interopRequireDefault(_events);
-
-var _to = __webpack_require__(5);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -317,7 +294,7 @@ Readable.prototype.push = function push(chunk) {
 		return false;
 	}
 
-	var data = Buffer.from((0, _to.toBuffer)(chunk));
+	var data = Buffer.from(chunk);
 
 	if (data.length) this._readableState.buffer = Buffer.concat([this._readableState.buffer, data], this._readableState.buffer.length + data.length);
 
@@ -388,10 +365,10 @@ Readable.prototype.isPaused = function isPaused() {
 
 exports.default = Readable;
 module.exports = exports['default'];
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2), __webpack_require__(0), __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1), __webpack_require__(2), __webpack_require__(0)))
 
 /***/ }),
-/* 5 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -419,7 +396,19 @@ function toBuffer(iterable) {
 exports.toBuffer = toBuffer;
 exports.arrayToBuffer = _arrayToBuffer2.default;
 exports.stringToBuffer = _stringToBuffer2.default;
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(setImmediate) {
+
+if (global.setImmediate) module.exports = setImmediate;else module.exports = function (f) {
+  return setTimeout(f, 0);
+};
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5)))
 
 /***/ }),
 /* 6 */
@@ -430,7 +419,7 @@ exports.stringToBuffer = _stringToBuffer2.default;
 
 exports.__esModule = true;
 
-var _events = __webpack_require__(3);
+var _events = __webpack_require__(7);
 
 var _events2 = _interopRequireDefault(_events);
 
@@ -446,10 +435,29 @@ var Stream = extend(_events2.default, function Stream() {
 
 exports.default = Stream;
 module.exports = exports['default'];
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
 /* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+exports.__esModule = true;
+function EventEmitter() {}
+
+EventEmitter.prototype.on = function on() {
+	Object.prototype.on.apply(this, arguments);
+
+	return this;
+};
+
+exports.default = EventEmitter;
+module.exports = exports["default"];
+
+/***/ }),
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -538,16 +546,7 @@ Writable.prototype.write = function write(chunk /*, encoding*/) {
 
 exports.default = Writable;
 module.exports = exports['default'];
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1), __webpack_require__(2), __webpack_require__(0)))
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _stream = __webpack_require__(10);
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(1), __webpack_require__(2)))
 
 /***/ }),
 /* 9 */
@@ -556,9 +555,7 @@ var _stream = __webpack_require__(10);
 "use strict";
 
 
-if (global.setImmediate) module.exports = global.setImmediate;else module.exports = function (f) {
-  return setInterval(f, 0);
-};
+var _stream = __webpack_require__(10);
 
 /***/ }),
 /* 10 */
@@ -570,11 +567,11 @@ if (global.setImmediate) module.exports = global.setImmediate;else module.export
 exports.__esModule = true;
 exports.Duplex = exports.Writable = exports.Readable = undefined;
 
-var _readable = __webpack_require__(4);
+var _readable = __webpack_require__(3);
 
 var _readable2 = _interopRequireDefault(_readable);
 
-var _writable = __webpack_require__(7);
+var _writable = __webpack_require__(8);
 
 var _writable2 = _interopRequireDefault(_writable);
 
@@ -629,11 +626,11 @@ module.exports = exports["default"];
 
 exports.__esModule = true;
 
-var _readable = __webpack_require__(4);
+var _readable = __webpack_require__(3);
 
 var _readable2 = _interopRequireDefault(_readable);
 
-var _writable = __webpack_require__(7);
+var _writable = __webpack_require__(8);
 
 var _writable2 = _interopRequireDefault(_writable);
 
@@ -643,7 +640,7 @@ var Duplex = extend(_readable2.default, extend(_writable2.default, function Dupl
 
 exports.default = Duplex;
 module.exports = exports['default'];
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ })
 /******/ ]);
