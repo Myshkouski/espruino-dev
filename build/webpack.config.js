@@ -38,12 +38,11 @@ const sharedConfig = {
 				loader: 'babel-loader',
 				options: {
 					presets: [
-						[ 'es2015', { loose: true } ]
+						['es2015', { loose: true }]
 					],
 					plugins: [
 						//modules
 						"add-module-exports",
-						//"transform-es2015-modules-commonjs",
 
 						//syntax
 						"transform-object-rest-spread"
@@ -79,21 +78,15 @@ const espruinoBundleConfig = merge({
 }, sharedConfig)
 
 espruinoBundleConfig.plugins.push(new webpack.ProvidePlugin({
+	'alive': resolve(__approot, 'lib/alive'),
 	'extend': resolve(__approot, 'lib/extend'),
 	'Buffer': resolve(__approot, 'lib/buffer'),
 	'process': resolve(__approot, 'lib/process'),
 	'setImmediate': resolve(__approot, 'lib/setImmediate')
 }))
 
-espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin({
-	compress: {
-		//keep_fnames: true
-	},
-	mangle: {
-		//keep_classnames: true,
-		//keep_fnames: true
-	}
-}))
+espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin())
+
 
 
 const nodeBundleConfig = merge({
