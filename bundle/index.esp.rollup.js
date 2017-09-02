@@ -1,47 +1,40 @@
 'use strict';
 
 var alive = null;
+var defaultInterval = 200;
+
+var blink = function blink(led) {
+  var on = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : defaultInterval;
+  var off = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : on * 5;
+
+  led.write(true);
+  setTimeout(function () {
+    led.write(false);
+    if (alive) setTimeout(function () {
+      return blink(led, on, off);
+    }, off);
+  }, on);
+};
 
 var start = function start() {
-  var on = true;
-  if (!alive) alive = setInterval(function () {
-    LED2.write(on);
-    on = !on;
-  }, 500);
+  if (!alive) {
+    alive = true;
+    blink(LED2);
+  }
 };
 
 var stop = function stop() {
   if (alive) {
-    clearInterval(alive);
-    alive = null;
+    alive = false;
   }
 };
 
-var alive$1 = (function (mode) {
+var alive$1 = (function (mode, onTimeout, offTimeout) {
   if (mode === undefined) mode = !alive;
 
   !mode ? stop() : start();
 
   return !!alive;
-});
-
-var _superChain = function _superChain(obj, Proto, _checked) {
-  if (obj && obj.super_ instanceof Array) {
-    return obj.super_.some(function (Super) {
-      if (Super === Proto) return true;
-      if (_checked.some(function (Class) {
-        return Class === Super;
-      })) return false;
-
-      _checked.push(Super);
-
-      return _superChain(obj.super_, Super, _checked);
-    });
-  }
-};
-
-var instanceOf = (function (instance, Proto) {
-  return instance instanceof Proto || !!_superChain(instance, Proto, []);
 });
 
 function arrayToBuffer(arr) {
@@ -59,7 +52,7 @@ function stringToUint8Array(str) {
 function toBuffer(iterable) {
   if (typeof iterable === 'string') return stringToUint8Array(iterable);
 
-  if (instanceOf(iterable, Uint8Array) || instanceOf(iterable, Array)) return arrayToBuffer(iterable);
+  if (iterable instanceof Uint8Array || iterable instanceof Array) return arrayToBuffer(iterable);
 }
 
 function _createBuffer() {
@@ -97,113 +90,94 @@ Buffer.concat = function concat() {
 	var buffer = _createBuffer([], 0, totalLength);
 	var offset = 0;
 
-	for (var _iterator = list, _isArray = Array.isArray(_iterator), _i3 = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
-		var _ref;
-
-		if (_isArray) {
-			if (_i3 >= _iterator.length) break;
-			_ref = _iterator[_i3++];
-		} else {
-			_i3 = _iterator.next();
-			if (_i3.done) break;
-			_ref = _i3.value;
-		}
-
-		var buf = _ref;
-
+	list.forEach(function (buf) {
 		buffer.set(buf, offset);
 		offset += buf.length;
-	}
+	});
 
 	return buffer;
 };
 
-function extend() {
-	for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-		args[_key] = arguments[_key];
-	}
+var defProp = function defProp(obj, prop, desc) {
+  try {
+    Object.defineProperty(obj, prop, desc);
+    return obj;
+  } catch (e) {
+    if (desc.get) obj.value = desc.get();else if (desc.value) obj[prop] = desc.value;
 
-	var Child = args[0];
+    return obj;
+  }
+};
 
-	function Extended() {
-		for (var _iterator = Extended.super_, _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
-			var _ref;
+var SUPER_CHAIN_PROTO_PROP = 'super_';
+var SUPER_CHAIN_APPLY_PROP = 'apply_';
 
-			if (_isArray) {
-				if (_i >= _iterator.length) break;
-				_ref = _iterator[_i++];
-			} else {
-				_i = _iterator.next();
-				if (_i.done) break;
-				_ref = _i.value;
-			}
+var _extend = function _extend() {
+  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-			var Super = _ref;
+  if (!options.apply) options.apply = [];
+  if (!options.super) options.super = [];
 
-			Super.apply(this, arguments);
-		}this.super_ = Extended.super_;
-	}
+  var Child = options.super[0];
 
-	Extended.super_ = args;
-	Extended.prototype = {};
+  function Extended() {
+    var _this = this,
+        _arguments = arguments;
 
-	for (var _iterator2 = args, _isArray2 = Array.isArray(_iterator2), _i2 = 0, _iterator2 = _isArray2 ? _iterator2 : _iterator2[Symbol.iterator]();;) {
-		var Proto = function Proto() {};
+    options.apply.forEach(function (Super) {
+      return Super.apply(_this, _arguments);
+    });
+  }
 
-		var _ref2;
+  defProp(Extended, 'name', { get: function get() {
+      return Child.name;
+    } });
+  defProp(Extended, 'prototype', { value: {} });
 
-		if (_isArray2) {
-			if (_i2 >= _iterator2.length) break;
-			_ref2 = _iterator2[_i2++];
-		} else {
-			_i2 = _iterator2.next();
-			if (_i2.done) break;
-			_ref2 = _i2.value;
-		}
+  options.super.forEach(function (Super) {
+    function Proto() {}
+    Proto.prototype = Super.prototype;
 
-		var Super = _ref2;
+    var proto = new Proto();
 
-		Proto.prototype = Super.prototype;
+    for (var prop in proto) {
+      if (prop !== SUPER_CHAIN_PROTO_PROP) defProp(Extended.prototype, prop, {
+        value: proto[prop],
+        enumerable: true,
+        writable: true
+      });
+    }
+  });
 
-		var p = new Proto();
-		for (var prop in p) {
-			Extended.prototype[prop] = p[prop];
-		} //Object.assign(Extended.prototype, new Proto())
-	}
+  defProp(Extended.prototype, 'constructor', { value: Child });
+  defProp(Extended.prototype, SUPER_CHAIN_PROTO_PROP, { value: options.super });
+  defProp(Extended.prototype, SUPER_CHAIN_APPLY_PROP, { value: options.apply });
 
-	Object.defineProperty(Extended.prototype, 'constructor', {
-		value: Child
-	});
+  return Extended;
+};
 
-	return Extended;
-}
+var extend = function extend() {
+  for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+    args[_key] = arguments[_key];
+  }
 
-var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+  return _extend({ super: args, apply: args });
+};
 
+var _setImmediate = global.setImmediate || function (f) {
+  return setTimeout(f, 0);
+};
 
+var _process = global.process || {};
 
-
-
-function createCommonjsModule(fn, module) {
-	return module = { exports: {} }, fn(module, module.exports), module.exports;
-}
-
-var setImmediate_1 = createCommonjsModule(function (module) {
-  if (commonjsGlobal.setImmediate) module.exports = setImmediate;else module.exports = function (f) {
-    return setTimeout(f, 0);
-  };
-});
-
-if (!process.nextTick) {
-  process.nextTick = setImmediate_1;
-}
+if (!_process.nextTick) _process.nextTick = _setImmediate;
 
 function EventEmitter() {}
 
 EventEmitter.prototype.on = function on() {
-	Object.prototype.on.apply(this, arguments);
+  Object.prototype.on.apply(this, arguments);
 
-	return this;
+  return this;
 };
 
 function _Stream() {
@@ -214,7 +188,12 @@ function _Stream() {
 	};
 }
 
-var Stream = extend(_Stream, EventEmitter);
+var Stream = _extend({
+	super: [_Stream, EventEmitter],
+	apply: [_Stream]
+});
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _readFree() {
 	return this._read(this._readableState.highWaterMark - this._readableState.buffer.length);
@@ -236,7 +215,7 @@ function _flow() {
 
 	if (this._readableState.flowing === true) _broadcast.call(this);
 
-	process.nextTick(function () {
+	_process.nextTick(function () {
 		return _readFree.call(_this);
 	});
 }
@@ -259,7 +238,7 @@ function _Readable() {
 
 	this._read = options.read;
 	if (!this._read) throw new TypeError('_read() is not implemented');
-	if (!instanceOf(this._read, Function)) throw new TypeError('\'options.read\' should be a function, passed', typeof options.read);
+	if (!this._read instanceof Function) throw new TypeError('\'options.read\' should be a function, passed', _typeof(options.read));
 }
 
 var Readable = extend(_Readable, Stream);
@@ -365,7 +344,7 @@ Readable.prototype.isPaused = function isPaused() {
 	return !this._readableState.flowing;
 };
 
-function write(chunk /*, encoding*/) {
+function write$1(chunk /*, encoding*/) {
   var self = this;
 
   var data = {
@@ -386,7 +365,7 @@ function write(chunk /*, encoding*/) {
     if (!buffer.length) return;
 
     function cb(err) {
-      process.nextTick(function () {
+      _process.nextTick(function () {
         if (err) throw err;
 
         state.consumed = true;
@@ -441,27 +420,52 @@ function _Writable() {
 
 var Writable = extend(_Writable, Stream);
 
-Writable.prototype.write = write;
+Writable.prototype.write = write$1;
 
 function _Duplex() {
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+  
 }
 
 var Duplex = extend(_Duplex, Readable, Writable);
 
-var d = new Duplex({
-  read: function read() {},
-  write: function write(d, e, cb) {
-    this.push(d);
-    cb();
-  }
+function _read(size) {}
+
+function _write() {}
+
+function _setup() {}
+
+function _Bus() {
+  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+  if (!options.setup) options.setup = _setup.bind(this);
+
+  Duplex.call(this, {
+    read: _read,
+    write: _write
+  });
+
+  this.options.frameTypes = [];
+  this.options._frameState = {
+    buffer: []
+  };
+}
+
+var Bus = _extend({
+  super: [Duplex],
+  apply: [_Bus]
 });
 
-console.log(!!d.read, !!d.write);
-console.log(instanceOf(d, Writable));
+Bus.prototype.tx = function tx() {};
 
-d.write('!');
-d.read(10);
+Bus.prototype.rx = function rx() {};
+
+function read() {}
+function write() {}
+
+var bus = new Bus();
+var readable = new Readable({ read: read });
+var writable = new Writable({ write: write });
+var duplex = new Duplex({ read: read, write: write });
 
 alive$1();
 //# sourceMappingURL=index.esp.rollup.js.map

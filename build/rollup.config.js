@@ -35,48 +35,20 @@ export default {
     replace({
       patterns: [
         {
+          include: 'src/**',
           exclude: path.resolve(__lib, 'instanceOf.js'),
-          test: /(?!\s)([\[\]{}\w.\s+\-*/><]+)\s+instanceof\s+([\[\]{}\w.\s+\-*/><]+)(?!\s)/ig,
+          test: /(?!\s)([\[\]{}\w.\s+\-*/><]+)[\r\n\t\s]+instanceof[\r\n\t\s]+([\[\]{}\w.\s+\-*/><]+)(?!\s)/ig,
           replace: (...args) => `instanceOf(${ args[1] }, ${ args[2] })`
         }
       ]
     }),
 
-    alias({
-      'events': path.resolve(__lib, 'events.js'),
-      'stream': path.resolve(__lib, 'stream/index.js'),
-      'buffer': path.resolve(__lib, 'buffer/index.js')
-    }),
-
-    inject({
-      modules: {
-        'Buffer': path.resolve(__lib, 'buffer/index.js'),
-
-        'extend': path.resolve(__lib, 'extend.js'),
-        'setImmediate': path.resolve(__lib, 'setImmediate.js'),
-        'process': path.resolve(__lib, 'process.js'),
-        'alive': path.resolve(__lib, 'alive.js'),
-        'instanceOf': path.resolve(__lib, 'instanceOf.js')
-      }
-    }),
-
-    resolve({
-      jsnext: true,
-      main: true,
-      jail: __approot,
-      preferBuiltins: false
-    }),
-
-    commonjs({
-      include: /.+/
-    }),
-
     babel({
-      exclude: 'node_modules/',
+      exclude: 'node_modules/**',
       babelrc: false,
       plugins: [
+        //'external-helpers',
         ['transform-object-rest-spread', { loose: true }],
-
         ['check-es2015-constants', { loose: true }],
         ['transform-es2015-arrow-functions', { loose: true }],
         ['transform-es2015-block-scoped-functions', { loose: true }],
@@ -94,17 +66,49 @@ export default {
         ['transform-es2015-spread', { loose: true }],
         ['transform-es2015-sticky-regex', { loose: true }],
         ['transform-es2015-template-literals', { loose: true }],
-        //['transform-es2015-typeof-symbol', { loose: true }],
+        ['transform-es2015-typeof-symbol', { loose: true }],
         ['transform-es2015-unicode-regex', { loose: true }],
         ['transform-regenerator', { loose: true }]
       ]
+    }),
+
+    alias({
+      'events': path.resolve(__lib, 'events.js'),
+      'stream': path.resolve(__lib, 'stream/index.js'),
+      'bus': path.resolve(__lib, 'bus/index.js'),
+      'buffer': path.resolve(__lib, 'buffer/index.js')
+    }),
+
+    inject({
+      exclude: 'node_modules/**',
+      modules: {
+        'Buffer': path.resolve(__lib, 'buffer/index.js'),
+        'extend': [path.resolve(__lib, 'extend.js'), 'extend'],
+        '_extend': [path.resolve(__lib, 'extend.js'), '_extend'],
+        'setImmediate': path.resolve(__lib, 'setImmediate.js'),
+        'process': path.resolve(__lib, 'process.js'),
+        'alive': path.resolve(__lib, 'alive.js'),
+        'instanceOf': path.resolve(__lib, 'instanceOf.js'),
+        'defProp': [path.resolve(__lib, 'def.js'), 'defProp']
+      }
+    }),
+
+    resolve({
+      jsnext: true,
+      main: true,
+      jail: __approot,
+      preferBuiltins: false
+    }),
+
+    commonjs({
+      include: /.+/
     }),
 
     //
     /*
     uglify({
       sourceMap: true,
-      toplevel: true
+      //toplevel: true
     })
     //
     */

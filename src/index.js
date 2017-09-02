@@ -1,16 +1,24 @@
-import { Duplex, Writable, Readable } from 'stream'
+const { Duplex, Writable, Readable } = require('stream')
+const Bus = require('bus')
 
-const d = new Duplex({
-  read() {}, write(d, e, cb) {
-    this.push(d)
-    cb()
-  }
-})
+function read(length) {
 
-console.log(!!d.read, !!d.write)
-console.log(d instanceof Writable)
+}
 
-d.write('!')
-d.read(10)
+function write() {}
+
+function setup() {
+  this._source = Serial1.setup({ tx: B7, rx: B6 })
+
+  this._source.on('data', data => {
+    console.log(data)
+  })
+}
+
+//const _serial = Serial.setup({ tx: B7, rx: B6 })
+
+const bus = new Bus({ read, write, setup })
+
+
 
 alive()
