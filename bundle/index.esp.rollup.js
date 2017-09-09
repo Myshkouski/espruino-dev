@@ -608,7 +608,7 @@ function _read(size) {
 }
 
 function _write(data, encoding, cb) {
-  console.log('_write(' + data + ')');
+  //console.log('_write(' + data + ')')
   return this._transform(data, encoding, cb);
 }
 
