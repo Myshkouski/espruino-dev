@@ -341,7 +341,7 @@ var Readable = _extend({
 });
 
 Readable.prototype.pause = function pause() {
-	console.log('pause()');
+	//console.log('pause()')
 	if (this._readableState.flowing !== false) {
 		this._readableState.flowing = false;
 		this.emit('pause');
@@ -400,7 +400,7 @@ Readable.prototype.pipe = function pipe(writable) {
 	})) {
 		var listener = function listener(data, pipe) {
 			if (!writable.write(data)) {
-				console.log('pipe should be stopped!');
+				//console.log('pipe should be stopped!')
 				pipe.stopped = true;
 				_this3.pause();
 
@@ -456,8 +456,9 @@ Readable.prototype.on = function on(event, listener) {
 
 Readable.prototype.removeListener = function removeListener(event, listener) {
 	if (event === 'data') {
-		console.log(this.listeners);
-		//this.pause()
+		//!!! this._listeners should be implemented
+		//console.log(this.listeners)
+		this.pause();
 	}
 
 	return Stream.prototype.removeListener.apply(this, arguments);
