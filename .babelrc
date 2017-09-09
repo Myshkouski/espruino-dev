@@ -1,5 +1,4 @@
 {
-  "exclude": "node_modules/",
   "plugins": [
     ["transform-object-rest-spread", { "loose": true }],
     ["check-es2015-constants", { "loose": true }],
