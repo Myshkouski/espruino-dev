@@ -3,6 +3,7 @@ const webpack = require('webpack')
 const { merge } = require('lodash')
 
 const __approot = resolve(__dirname, '../')
+const __lib = resolve(__approot, 'lib')
 
 const sharedConfig = {
 	node: {
@@ -52,6 +53,12 @@ const sharedConfig = {
 		]
 	},
 
+	resolve: {
+		alias: {
+			'bus': resolve(__lib, 'bus')
+		}
+	},
+
 	plugins: [
 
 	]
@@ -65,27 +72,33 @@ const espruinoBundleConfig = merge({
 	},
 
 	output: {
-		filename: '[name].esp.js'
+		filename: '[name].esp.webpack.js'
 	},
 
 	resolve: {
 		alias: {
-			'events': resolve(__approot, 'lib/events'),
-			'stream': resolve(__approot, 'lib/stream'),
-			'buffer': resolve(__approot, 'lib/buffer')
+			'events': resolve(__lib, 'events'),
+			'stream': resolve(__lib, 'stream'),
+			'buffer': resolve(__lib, 'buffer')
 		}
 	}
 }, sharedConfig)
 
 espruinoBundleConfig.plugins.push(new webpack.ProvidePlugin({
-	'alive': resolve(__approot, 'lib/alive'),
-	'extend': resolve(__approot, 'lib/extend'),
-	'Buffer': resolve(__approot, 'lib/buffer'),
-	'process': resolve(__approot, 'lib/process'),
-	'setImmediate': resolve(__approot, 'lib/setImmediate')
+	'alive': resolve(__lib, 'alive'),
+	'extend': [resolve(__lib, 'extend'), 'extend'],
+	'_extend': [resolve(__lib, 'extend'), '_extend'],
+	'defProp': [resolve(__lib, 'def.js'), 'defProp'],
+	'Buffer': resolve(__lib, 'buffer'),
+	'process': resolve(__lib, 'process'),
+	'setImmediate': resolve(__lib, 'setImmediate')
 }))
 
-espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin())
+espruinoBundleConfig.plugins.push(new webpack.optimize.UglifyJsPlugin({
+	mangle: {
+		keep_fnames: true
+	}
+}))
 
 
 
@@ -98,7 +111,7 @@ const nodeBundleConfig = merge({
 	},
 
 	output: {
-		filename: '[name].node.js'
+		filename: '[name].node.webpack.js'
 	}
 }, sharedConfig)
 

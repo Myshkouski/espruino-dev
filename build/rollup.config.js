@@ -73,6 +73,7 @@ export default {
     }),
 
     alias({
+      'event-loop': path.resolve(__lib, 'event-loop/index.js'),
       'events': path.resolve(__lib, 'events.js'),
       'stream': path.resolve(__lib, 'stream/index.js'),
       'bus': path.resolve(__lib, 'bus/index.js'),
@@ -82,6 +83,7 @@ export default {
     inject({
       exclude: 'node_modules/**',
       modules: {
+        '_named': path.resolve(__lib, 'namedFunc.js'),
         'Buffer': path.resolve(__lib, 'buffer/index.js'),
         'extend': [path.resolve(__lib, 'extend.js'), 'extend'],
         '_extend': [path.resolve(__lib, 'extend.js'), '_extend'],
@@ -105,12 +107,12 @@ export default {
     }),
 
     //
-    /*
+        /*
     uglify({
       sourceMap: true,
-      //toplevel: true
+      toplevel: true
     })
     //
-    */
+        */
   ]
 }
