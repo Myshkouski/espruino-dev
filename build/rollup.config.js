@@ -12,17 +12,11 @@ import legacy from 'rollup-plugin-legacy'
 
 const __approot = path.resolve(__dirname, '../')
 const __lib = path.resolve(__approot, 'lib')
+const __helpers = path.resolve(__approot, 'helpers')
 const __dist = path.resolve(__approot, 'bundle')
 const __src = path.resolve(__approot, 'src')
 
-const regexp = r => {
-  r.test = function(...args) {
-    console.log(...args)
-    return RegExp.prototype.test.call(this, args)
-  }
 
-  return r
-}
 
 export default {
   input: path.resolve(__src, 'index.js'),
@@ -47,7 +41,7 @@ export default {
       exclude: 'node_modules/**',
       babelrc: false,
       plugins: [
-        //'external-helpers',
+        'external-helpers',
         ['transform-object-rest-spread', { loose: true }],
         ['check-es2015-constants', { loose: true }],
         ['transform-es2015-arrow-functions', { loose: true }],
@@ -72,27 +66,44 @@ export default {
       ]
     }),
 
-    alias({
-      'event-loop': path.resolve(__lib, 'event-loop/index.js'),
-      'events': path.resolve(__lib, 'events.js'),
-      'stream': path.resolve(__lib, 'stream/index.js'),
-      'bus': path.resolve(__lib, 'bus/index.js'),
-      'buffer': path.resolve(__lib, 'buffer/index.js')
+    inject({
+      exclude: path.resolve(__lib, 'event-loop') + '/**',
+      modules: {
+        'setTimeout': path.resolve(__lib, 'event-loop/setTimeout.js'),
+      }
+    }),
+
+    inject({
+      //exclude: 'node_modules/**',
+      modules: {
+        'Promise': path.resolve(__lib, 'promise.js'),
+        'Buffer': path.resolve(__lib, 'buffer/index.js'),
+        'setImmediate': path.resolve(__lib, 'event-loop/setImmediate.js'),
+        'process': path.resolve(__lib, 'process.js')
+      }
     }),
 
     inject({
       exclude: 'node_modules/**',
       modules: {
-        '_named': path.resolve(__lib, 'namedFunc.js'),
-        'Buffer': path.resolve(__lib, 'buffer/index.js'),
-        'extend': [path.resolve(__lib, 'extend.js'), 'extend'],
+        '_named': path.resolve(__helpers, 'namedFunc.js'),
         '_extend': [path.resolve(__lib, 'extend.js'), '_extend'],
-        'setImmediate': path.resolve(__lib, 'setImmediate.js'),
-        'process': path.resolve(__lib, 'process.js'),
-        'alive': path.resolve(__lib, 'alive.js'),
-        'instanceOf': path.resolve(__lib, 'instanceOf.js'),
-        'defProp': [path.resolve(__lib, 'def.js'), 'defProp']
+        'extend': [path.resolve(__lib, 'extend.js'), 'extend'],
+        'blink': path.resolve(__lib, 'blink.js'),
+        'instanceOf': path.resolve(__helpers, 'instanceOf.js'),
+        'defProp': [path.resolve(__helpers, 'def.js'), 'defProp']
       }
+    }),
+
+    alias({
+      'nextTick': path.resolve(__lib, 'event-loop/nextTick.js'),
+      'events': path.resolve(__lib, 'events.js'),
+      'stream': path.resolve(__lib, 'stream/index.js'),
+      'bus': path.resolve(__lib, 'bus/index.js'),
+      'buffer': path.resolve(__lib, 'buffer/index.js'),
+      'schedule': path.resolve(__lib, 'schedule.js'),
+      'callN': path.resolve(__helpers, 'callN.js'),
+      'once': path.resolve(__helpers, 'callOnce.js')
     }),
 
     resolve({
@@ -107,12 +118,12 @@ export default {
     }),
 
     //
-        /*
+    /*
     uglify({
       sourceMap: true,
       toplevel: true
     })
     //
-        */
+    */
   ]
 }

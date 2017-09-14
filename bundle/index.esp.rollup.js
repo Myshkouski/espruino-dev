@@ -1,87 +1,506 @@
 'use strict';
 
-var alive = null;
-var defaultInterval = 20;
+function pushImmediate(queue) {
+  for (var i = 0; i < queue.length; i++) {
+    queue[i]();
+  }queue.splice(0);
+}
 
-var blink = function blink(led) {
+function pushToNextIteration(_queue) {
+  var queue = [].concat(_queue);
+  _queue.splice(0);
+  for (var i = 0; i < queue.length; i++) {
+    queue[i]();
+  }
+}
+
+var loop = {
+  nextTick: { queue: [], handle: pushImmediate, timer: false },
+  timeout: { queue: [], handle: pushToNextIteration, timer: false },
+  immediate: { queue: [], handle: pushImmediate, timer: false }
+};
+
+var timer = false;
+
+function asyncCall(cb) {
+  setTimeout(cb);
+}
+
+function asyncFlush() {
+  for (var i in loop) {
+    loop[i].handle(loop[i].queue);
+    loop[i].timer = timer = false;
+  }
+}
+
+function defer(stage, cb) {
+  stage.queue.push(cb);
+
+  if (!timer && !stage.timer) {
+    stage.timer = timer = true;
+    asyncCall(asyncFlush);
+  }
+}
+
+var _setTimeout$1 = function _setTimeout(cb, timeout) {
+  defer(loop.timeout, function () {
+    return setTimeout(cb, timeout);
+  });
+};
+
+var status = false;
+function blink(mode) {
+  if (mode === undefined) mode = !status;
+
+  !mode ? blink.stop() : blink.start();
+
+  return !!status;
+}
+
+blink.start = function () {
+  if (!status) {
+    status = true;
+
+    blink.once(LED2, 20, function cb() {
+      if (status) _setTimeout$1(function () {
+        return blink.once(LED2, 20, cb);
+      }, 980);
+    });
+  }
+};
+
+blink.stop = function () {
+  if (status) {
+    status = false;
+  }
+};
+
+blink.once = function (led) {
   var on = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 20;
-  var off = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1000 - defaultInterval;
+  var cb = arguments[2];
 
   led.write(true);
-  setTimeout(function () {
+  _setTimeout$1(function () {
     led.write(false);
-    if (alive) setTimeout(function () {
-      return blink(led, on, off);
-    }, off);
+    cb && cb();
   }, on);
 };
 
-var start = function start() {
-  if (!alive) {
-    alive = true;
+var _nextTick = function nextTick(cb) {
+  defer(loop.nextTick, cb);
+}.bind(undefined);
 
-    blink(LED2);
-  }
+var _process = typeof process !== 'undefined' ? process : {};
+
+_process.nextTick = typeof _process.nextTick !== 'undefined' ? _process.nextTick : _nextTick;
+
+var _setImmediate$1 = function (cb) {
+  defer(loop.immediate, cb);
+}.bind(undefined);
+
+var babelHelpers = {};
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
 };
 
-var stop = function stop() {
-  if (alive) {
-    alive = false;
+
+
+
+
+var asyncGenerator = function () {
+  function AwaitValue(value) {
+    this.value = value;
   }
-};
 
-var alive$1 = (function (mode) {
-  if (mode === undefined) mode = !alive;
+  function AsyncGenerator(gen) {
+    var front, back;
 
-  !mode ? stop() : start();
+    function send(key, arg) {
+      return new Promise(function (resolve, reject) {
+        var request = {
+          key: key,
+          arg: arg,
+          resolve: resolve,
+          reject: reject,
+          next: null
+        };
 
-  return !!alive;
-});
+        if (back) {
+          back = back.next = request;
+        } else {
+          front = back = request;
+          resume(key, arg);
+        }
+      });
+    }
 
-function Buffer() {
-	throw new Error('Buffer constructor is deprecated. Use Buffer.from() instead.');
+    function resume(key, arg) {
+      try {
+        var result = gen[key](arg);
+        var value = result.value;
+
+        if (value instanceof AwaitValue) {
+          Promise.resolve(value.value).then(function (arg) {
+            resume("next", arg);
+          }, function (arg) {
+            resume("throw", arg);
+          });
+        } else {
+          settle(result.done ? "return" : "normal", result.value);
+        }
+      } catch (err) {
+        settle("throw", err);
+      }
+    }
+
+    function settle(type, value) {
+      switch (type) {
+        case "return":
+          front.resolve({
+            value: value,
+            done: true
+          });
+          break;
+
+        case "throw":
+          front.reject(value);
+          break;
+
+        default:
+          front.resolve({
+            value: value,
+            done: false
+          });
+          break;
+      }
+
+      front = front.next;
+
+      if (front) {
+        resume(front.key, front.arg);
+      } else {
+        back = null;
+      }
+    }
+
+    this._invoke = send;
+
+    if (typeof gen.return !== "function") {
+      this.return = undefined;
+    }
+  }
+
+  if (typeof Symbol === "function" && Symbol.asyncIterator) {
+    AsyncGenerator.prototype[Symbol.asyncIterator] = function () {
+      return this;
+    };
+  }
+
+  AsyncGenerator.prototype.next = function (arg) {
+    return this._invoke("next", arg);
+  };
+
+  AsyncGenerator.prototype.throw = function (arg) {
+    return this._invoke("throw", arg);
+  };
+
+  AsyncGenerator.prototype.return = function (arg) {
+    return this._invoke("return", arg);
+  };
+
+  return {
+    wrap: function (fn) {
+      return function () {
+        return new AsyncGenerator(fn.apply(this, arguments));
+      };
+    },
+    await: function (value) {
+      return new AwaitValue(value);
+    }
+  };
+}();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+babelHelpers;
+
+var PENDING = 'pending';
+var SEALED = 'sealed';
+var FULFILLED = 'fulfilled';
+var REJECTED = 'rejected';
+
+var NOOP = function NOOP() {};
+
+function invokeResolver(resolver, promise) {
+  function resolvePromise(value) {
+    resolve(promise, value);
+  }
+
+  function rejectPromise(reason) {
+    reject(promise, reason);
+  }
+
+  try {
+    resolver(resolvePromise, rejectPromise);
+  } catch (e) {
+    rejectPromise(e);
+  }
 }
 
-Buffer.from = function _createBuffer() {
-	//console.log(arguments)
-	var iterable = [];
-	if (typeof arguments[0] === 'string') {
-		for (var c in arguments[0]) {
-			iterable[c] = arguments[0].charCodeAt(c);
-		}iterable = new Uint8Array(iterable);
-	} else if (arguments[0] instanceof Uint8Array || arguments[0] instanceof Array) iterable = new Uint8Array(arguments[0]);
+function invokeCallback(subscriber) {
+  var owner = subscriber.owner;
+  var settled = owner.state_;
+  var value = owner.data_;
+  var callback = subscriber[settled];
+  var promise = subscriber.then;
 
-	var offset = arguments[1] !== undefined ? arguments[1] : 0,
-	    length = arguments[2] !== undefined ? arguments[2] : iterable.length;
+  if (typeof callback === 'function') {
+    settled = FULFILLED;
+    try {
+      value = callback(value);
+    } catch (e) {
+      reject(promise, e);
+    }
+  }
 
-	var array = [];
+  if (!handleThenable(promise, value)) {
+    if (settled === FULFILLED) resolve(promise, value);
 
-	for (var i = offset; i--;) {
-		array[i] = 0;
-	}for (var _i = 0; _i < iterable.length && _i < length; _i++) {
-		array[offset + _i] = iterable[_i];
-	}for (var _i2 = array.length; _i2 < length; _i2++) {
-		array[_i2] = 0;
-	}var buffer = new Uint8Array(array);
+    if (settled === REJECTED) reject(promise, value);
+  }
+}
 
-	return buffer;
+function handleThenable(promise, value) {
+  var resolved;
+
+  try {
+    if (promise === value) throw new TypeError('A promises callback cannot return that same promise.');
+
+    if (value && (typeof value === 'function' || (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object')) {
+      var then = value.then; // then should be retrived only once
+
+      if (typeof then === 'function') {
+        then.call(value, function (val) {
+          if (!resolved) {
+            resolved = true;
+
+            if (value !== val) resolve(promise, val);else fulfill(promise, val);
+          }
+        }, function (reason) {
+          if (!resolved) {
+            resolved = true;
+
+            reject(promise, reason);
+          }
+        });
+
+        return true;
+      }
+    }
+  } catch (e) {
+    if (!resolved) reject(promise, e);
+
+    return true;
+  }
+
+  return false;
+}
+
+function resolve(promise, value) {
+  if (promise === value || !handleThenable(promise, value)) fulfill(promise, value);
+}
+
+function fulfill(promise, value) {
+  if (promise.state_ === PENDING) {
+    promise.state_ = SEALED;
+    promise.data_ = value;
+
+    _setImmediate$1(function () {
+      return publishFulfillment(promise);
+    });
+  }
+}
+
+function reject(promise, reason) {
+  if (promise.state_ === PENDING) {
+    promise.state_ = SEALED;
+    promise.data_ = reason;
+
+    _setImmediate$1(function () {
+      return publishRejection(promise);
+    });
+  }
+}
+
+function publish(promise) {
+  var callbacks = promise.then_;
+  promise.then_ = undefined;
+
+  for (var i = 0; i < callbacks.length; i++) {
+    invokeCallback(callbacks[i]);
+  }
+}
+
+function publishFulfillment(promise) {
+  promise.state_ = FULFILLED;
+  publish(promise);
+}
+
+function publishRejection(promise) {
+  promise.state_ = REJECTED;
+  publish(promise);
+}
+
+function Promise$1(resolver) {
+  if (typeof resolver !== 'function') throw new TypeError('Promise constructor takes a function argument');
+
+  if (this instanceof Promise$1 === false) throw new TypeError('Failed to construct \'Promise\': Please use the \'new\' operator, this object constructor cannot be called as a function.');
+
+  this.then_ = [];
+
+  invokeResolver(resolver, this);
+}
+
+Promise$1.prototype = {
+  constructor: Promise$1,
+
+  state_: PENDING,
+  then_: null,
+  data_: undefined,
+
+  then: function then(onFulfillment, onRejection) {
+    var subscriber = {
+      owner: this,
+      then: new this.constructor(NOOP),
+      fulfilled: onFulfillment,
+      rejected: onRejection
+    };
+
+    if (this.state_ === FULFILLED || this.state_ === REJECTED) {
+      // already resolved, call callback async
+      _setImmediate$1(function () {
+        return invokeCallback(subscriber);
+      });
+    } else {
+      // subscribe
+      this.then_.push(subscriber);
+    }
+
+    return subscriber.then;
+  },
+
+  'catch': function _catch(onRejection) {
+    return this.then(null, onRejection);
+  }
 };
 
-Buffer.concat = function concat() {
-	var list = arguments[0] || [],
-	    totalLength = arguments[1] !== undefined ? arguments[1] : list.reduce(function (totalLength, array) {
-		return totalLength + array.length;
-	}, 0);
+Promise$1.all = function (promises) {
+  var Class = this;
 
-	var buffer = _createBuffer([], 0, totalLength),
-	    offset = 0;
+  if (!(promises instanceof Array)) throw new TypeError('You must pass an array to Promise.all().');
 
-	list.forEach(function (buf) {
-		buffer.set(buf, offset);
-		offset += buf.length;
-	});
+  return new Class(function (resolve, reject) {
+    var results = [];
+    var remaining = 0;
 
-	return buffer;
+    function resolver(index) {
+      remaining++;
+      return function (value) {
+        results[index] = value;
+        if (! --remaining) resolve(results);
+      };
+    }
+
+    for (var i = 0, promise; i < promises.length; i++) {
+      promise = promises[i];
+
+      if (promise && typeof promise.then === 'function') promise.then(resolver(i), reject);else results[i] = promise;
+    }
+
+    if (!remaining) resolve(results);
+  });
+};
+
+Promise$1.race = function (promises) {
+  var Class = this;
+
+  if (!(promises instanceof Array)) throw new TypeError('You must pass an array to Promise.race().');
+
+  return new Class(function (resolve, reject) {
+    for (var i = 0, promise; i < promises.length; i++) {
+      promise = promises[i];
+
+      if (promise && typeof promise.then === 'function') promise.then(resolve, reject);else resolve(promise);
+    }
+  });
+};
+
+Promise$1.resolve = function (value) {
+  var Class = this;
+
+  if (value && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object' && value.constructor === Class) return value;
+
+  return new Class(function (resolve) {
+    resolve(value);
+  });
+};
+
+Promise$1.reject = function (reason) {
+  var Class = this;
+
+  return new Class(function (resolve, reject) {
+    reject(reason);
+  });
 };
 
 var defProp = function defProp(obj, prop, desc) {
@@ -104,18 +523,18 @@ var _named = (function (name, f) {
   return f;
 });
 
-var SUPER_CHAIN_PROTO_PROP = 'super_';
-var SUPER_CHAIN_APPLY_PROP = 'apply_';
+var SUPER_CHAIN_PROTO_PROP = '_super';
+var SUPER_CHAIN_APPLY_PROP = '_apply';
+var PROTOTYPE_IS_EXTENDED_PROP = '_isExtended';
 
-var _copyChainToExtended = function _copyChainToExtended(Extended, ProtoChain, chainPropName, ignoreExtended) {
-  //if chain on [Extended] have not been created yet
+var _copyChain = function _copyChain(Extended, ProtoChain, chainPropName, ignoreExtended) {
+  //if chain on [Extended] has not been created yet
   if (!Extended.prototype[chainPropName]) defProp(Extended.prototype, chainPropName, { value: [] });
 
-  //for every [Proto] in passed chain
   ProtoChain.forEach(function (Proto) {
     //console.log(!!Proto.prototype['__extended__'], Proto)
     //if [Proto] has been '__extended__' and has same-named proto chain, copy the Proto chain to Extended chain
-    var isExtended = !!Proto.prototype['__extended__'],
+    var isExtended = !!Proto.prototype[PROTOTYPE_IS_EXTENDED_PROP],
         hasSameChain = !!Proto.prototype[chainPropName];
 
     var alreadyInChain = Extended.prototype[chainPropName].some(function (P) {
@@ -160,7 +579,10 @@ var _extend = function _extend() {
   }
 
   _named(options.name, Extended);
+
   defProp(Extended, 'prototype', { value: {} });
+  defProp(Extended.prototype, 'constructor', { value: Child });
+  defProp(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true });
 
   options.super.forEach(function (Super) {
     function Proto() {}
@@ -169,8 +591,7 @@ var _extend = function _extend() {
     var proto = new Proto();
 
     for (var prop in proto) {
-      //console.log(prop)
-      if (prop !== '__extended__' && prop !== SUPER_CHAIN_PROTO_PROP && prop !== SUPER_CHAIN_APPLY_PROP) defProp(Extended.prototype, prop, {
+      if (['constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP].indexOf(prop) < 0) defProp(Extended.prototype, prop, {
         value: proto[prop],
         enumerable: true,
         writable: true
@@ -178,41 +599,57 @@ var _extend = function _extend() {
     }
   });
 
-  defProp(Extended.prototype, 'constructor', { value: Child });
-  defProp(Extended.prototype, '__extended__', { value: true });
-
-  _copyChainToExtended(Extended, options.super, SUPER_CHAIN_PROTO_PROP, false);
-  _copyChainToExtended(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
+  _copyChain(Extended, options.super, SUPER_CHAIN_PROTO_PROP, false);
+  _copyChain(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
 
   return Extended;
 };
 
-var runImmediate = [];
-var runNextTick = [];
-var set = false;
+function Buffer() {
+	throw new Error('Buffer constructor is deprecated. Use Buffer.from() instead.');
+}
 
-var plan = function plan() {
-  if (!set) {
-    set = true;
-    setTimeout(function () {
-      var query = [].concat(runNextTick, runImmediate);
-      runNextTick = [];
-      runImmediate = [];
-      query.forEach(function (f) {
-        return f();
-      });
-      set = false;
-    }, 0);
-  }
+Buffer.from = function _createBuffer() {
+	//console.log(arguments)
+	var iterable = [];
+	if (typeof arguments[0] === 'string') {
+		for (var c in arguments[0]) {
+			iterable[c] = arguments[0].charCodeAt(c);
+		}iterable = new Uint8Array(iterable);
+	} else if (arguments[0] instanceof Uint8Array || arguments[0] instanceof Array) iterable = new Uint8Array(arguments[0]);
+
+	var offset = arguments[1] !== undefined ? arguments[1] : 0,
+	    length = arguments[2] !== undefined ? arguments[2] : iterable.length;
+
+	var array = [];
+
+	for (var i = offset; i--;) {
+		array[i] = 0;
+	}for (var _i = 0; _i < iterable.length && _i < length; _i++) {
+		array[offset + _i] = iterable[_i];
+	}for (var _i2 = array.length; _i2 < length; _i2++) {
+		array[_i2] = 0;
+	}var buffer = new Uint8Array(array);
+
+	return buffer;
 };
-var planOnNextTick = function planOnNextTick(f) {
-  runNextTick.push(f);
-  plan();
+
+Buffer.concat = function concat() {
+	var list = arguments[0] || [],
+	    totalLength = arguments[1] !== undefined ? arguments[1] : list.reduce(function (totalLength, array) {
+		return totalLength + array.length;
+	}, 0);
+
+	var buffer = Buffer.from([], 0, totalLength),
+	    offset = 0;
+
+	list.forEach(function (buf) {
+		buffer.set(buf, offset);
+		offset += buf.length;
+	});
+
+	return buffer;
 };
-
-var _process = global.process || {};
-
-if (!_process.nextTick) _process.nextTick = planOnNextTick;
 
 function EventEmitter() {}
 
@@ -248,8 +685,6 @@ var Stream = _extend({
 	super: [EventEmitter],
 	apply: [EventEmitter, _Stream]
 });
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var ENCODINGS = {
 	BINARY: 'binary',
@@ -603,12 +1038,12 @@ Duplex$2.prototype.on = function on() {
   return this;
 };
 
-function _read(size) {
+function _read$1(size) {
   //console.log('_read()')
   //dumb function
 }
 
-function _write(data, encoding, cb) {
+function _write$1(data, encoding, cb) {
   //console.log('_write(' + data + ')')
   return this._transform(data, encoding, cb);
 }
@@ -617,8 +1052,8 @@ function _Transform() {
   var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
   Duplex$2.call(this, {
-    read: _read,
-    write: _write,
+    read: _read$1,
+    write: _write$1,
     highWaterMark: options.highWaterMark
   });
 
@@ -650,65 +1085,60 @@ var PassThrough = _extend({
   apply: [_PassThrough]
 });
 
-function _read$1(size) {}
+function _Schedule() {
+  this._edge = Promise$1.resolve();
+  this.slots = {};
+}
 
-function _write$1(data, encoding, cb) {
+var Schedule = _extend({
+  name: 'Schedule',
+  super: [EventEmitter],
+  apply: [EventEmitter, _Schedule]
+});
+
+Schedule.prototype.immediate = function (task) {
   var _this = this;
 
-  var binary = Buffer.from(data);
-  this._busState.parsing = Buffer.concat([this._busState.parsing, binary], this._busState.parsing.length + binary.length);
+  this._edge = Promise$1.all([this._edge, Promise$1.resolve(task(this.slots)).catch(function (err) {
+    return _this.emit('error', err);
+  })]);
 
-  //optimize
+  return this;
+};
 
-  this.frameSet.some(function (frameSet) {
-    var frame = void 0;
+Schedule.prototype.deferred = function (task) {
+  var _this2 = this;
 
-    try {
-      frame = frameSet.decode.call(_this, _this._busState.parsing);
-    } catch (err) {
-      return false;
-    }
-
-    //this.options._busState.parsedFrames.push(frame)
-
-    _this.emit('frame', frame);
-
-    return true;
+  this._edge = this._edge.then(function (r) {
+    return task(_this2.slots);
+  }).catch(function (err) {
+    return _this2.emit('error', err);
   });
+
+  return this;
+};
+
+function _read(size) {}
+
+function _write(data, encoding, cb) {
+  this.slots.incoming.emit('data', { chunk: data, encoding: encoding });
 
   cb();
 }
 
 function _Bus() {
-  var _this2 = this;
-
   var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
   Duplex.call(this, {
-    read: _read$1,
-    write: _write$1,
+    read: _read,
+    write: _write,
     highWaterMark: options.highWaterMark
   });
 
-  defProp(this, 'setup', {
-    value: function value() {
-      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-        args[_key] = arguments[_key];
-      }
+  this._setup = options.setup.bind(this);
 
-      if (!_this2._busState.configured) {
-        //console.log(options.setup)
-        options.setup.apply(_this2, args);
-      } else throw new Error('Bus has been already set up.');
+  this.slots.incoming = new EventEmitter();
 
-      return _this2;
-    }
-  });
-
-  this.frameSet = [];
-  /*this.options.optimize = {
-    handlers: [],
-    }*/
   this._busState = {
     configured: false,
     parsing: Buffer.from([])
@@ -717,15 +1147,25 @@ function _Bus() {
 }
 
 var Bus = _extend({
-  super: [Duplex],
-  apply: [_Bus]
+  name: 'Bus',
+  super: [Duplex, Schedule],
+  apply: [Schedule, _Bus]
 });
 
-Bus.prototype.tx = function tx(binary, cb) {};
+Bus.prototype.setup = function () {
+  var _this = this;
 
-Bus.prototype.rx = function rx() {};
+  for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+    args[_key] = arguments[_key];
+  }
 
-alive$1();
+  return this.deferred(function (slots) {
+    if (_this._busState.configured) return Promise$1.reject('already configured');
+
+    _this._busState.configured = true;
+    return _this._setup.apply(_this, [slots].concat(args));
+  });
+};
 
 var CONSTANTS = {
   PN532_PREAMBLE: 0x00,
@@ -774,15 +1214,13 @@ var CONSTANTS = {
   /*PN532_SPI_STATREAD                  : 0x02,
   PN532_SPI_DATAWRITE                 : 0x01,
   PN532_SPI_DATAREAD                  : 0x03,
-  PN532_SPI_READY                     : 0x01,*/
-
-  PN532_I2C_ADDRESS: 0x48 >> 1,
-  PN532_I2C_READBIT: 0x01,
-  PN532_I2C_BUSY: 0x00,
-  PN532_I2C_READY: 0x01,
-  PN532_I2C_READYTIMEOUT: 20,
-
-  /*PN532_MIFARE_ISO14443A              : 0x00,
+  PN532_SPI_READY                     : 0x01,
+    PN532_I2C_ADDRESS                   : 0x48 >> 1,
+  PN532_I2C_READBIT                   : 0x01,
+  PN532_I2C_BUSY                      : 0x00,
+  PN532_I2C_READY                     : 0x01,
+  PN532_I2C_READYTIMEOUT              : 20,
+    PN532_MIFARE_ISO14443A              : 0x00,
     // Mifare Commands
   MIFARE_CMD_AUTH_A                   : 0x60,
   MIFARE_CMD_AUTH_B                   : 0x61,
@@ -868,25 +1306,64 @@ var cmd = function cmd(c, readBytes) {
   return new Uint8Array(arr);
 };
 
-Serial1.setup(115200, {
-  rx: B7, tx: B6
-});
-
-var c = cmd([CONSTANTS.PN532_COMMAND_GETFIRMWAREVERSION]);
+var wakeup = new Uint8Array([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+var c = cmd([CONSTANTS.PN532_COMMAND_GETGENERALSTATUS]);
 var sam = cmd([CONSTANTS.PN532_COMMAND_SAMCONFIGURATION, CONSTANTS.PN532_SAM_NORMAL_MODE, 20, 0]);
 
-var w = new Writable({
-  write: function write(d, e, cb) {
-    console.log(d);
-    cb();
-  }
+//blink()
+
+function setup(slots, serial) {
+  console.log('setup()');
+
+  slots.serial = serial;
+
+  serial.setup(115200, {
+    rx: B7, tx: B6
+  });
+
+  serial.pipe(this);
+
+  serial.write(wakeup);
+  serial.write(sam);
+
+  return new Promise$1(function (resolve) {
+    _setTimeout$1(function () {
+      blink.once(LED1, 20, function () {
+        return _setTimeout$1(function () {
+          return blink.once(LED1, 20);
+        }, 200);
+      });
+
+      console.log('configured');
+
+      resolve();
+    }, 2000);
+  });
+}
+
+var bus = new Bus({ setup: setup });
+
+bus.on('frame', function (frame) {
+  return console.log(_process.memory().free, frame);
 });
 
-Serial1.pipe(w);
+bus.on('error', function (err) {
+  return console.log(err);
+});
 
-//Serial1.write(wakeup)
-//Serial1.write(sam)
-setInterval(function () {
-  return Serial1.write(c);
-}, 1500);
+bus.setup(Serial1);
+
+bus.deferred(function (_ref) {
+  var serial = _ref.serial;
+  return setInterval(function () {
+    return serial.write(c);
+  }, 2000);
+});
+
+bus.deferred(function (slots) {
+  slots.incoming.on('data', function (data) {
+    blink.once(LED2);
+    //console.log('incoming', data.chunk)
+  });
+});
 //# sourceMappingURL=index.esp.rollup.js.map
