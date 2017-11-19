@@ -5,16 +5,19 @@ import eslint from 'rollup-plugin-eslint'
 import resolve from 'rollup-plugin-node-resolve'
 import commonjs from 'rollup-plugin-commonjs'
 import root from 'rollup-plugin-root-import'
+import yaml from 'rollup-plugin-yaml'
 import alias from 'rollup-plugin-alias'
 import replace from 'rollup-plugin-re'
 import uglify from 'rollup-plugin-uglify'
 import legacy from 'rollup-plugin-legacy'
 import analyze from 'rollup-analyzer-plugin'
 import defaults from 'lodash.defaultsdeep'
+import includePaths from 'rollup-plugin-includepaths'
 
 const __approot = path.resolve(__dirname, '../')
 const __lib = path.resolve(__approot, 'lib')
 const __helpers = path.resolve(__approot, 'helpers')
+const __polyfill = path.resolve(__approot, 'polyfill')
 const __dist = path.resolve(__approot, 'bundle')
 const __src = path.resolve(__approot, 'src')
 const input = path.resolve(__src, 'index.js')
@@ -25,12 +28,12 @@ const targetPlatform = 'esp'
 const espPolyfills = {
   //exclude: 'node_modules/**',
   modules: {
-    'Object': path.resolve(__lib, 'polyfill/object.js'),
-    'Array': path.resolve(__lib, 'polyfill/array.js'),
+    'Object': path.resolve(__polyfill, 'object.js'),
+    'Array': path.resolve(__polyfill, 'array.js'),
     //'Promise': path.resolve(__lib, 'polyfill/promise.js'),
-    'Buffer': path.resolve(__lib, 'polyfill/buffer/index.js'),
-    'process': path.resolve(__lib, 'polyfill/process.js'),
-    'console': path.resolve(__lib, 'polyfill/console.js')
+    'Buffer': path.resolve(__lib, 'buffer/index.js'),
+    'process': path.resolve(__polyfill, 'process.js'),
+    'console': path.resolve(__polyfill, 'console.js')
   }
 }
 
@@ -40,8 +43,7 @@ const injectPolyfillExcludeNM = {
     '_named': path.resolve(__helpers, 'namedFunc.js'),
     '_extend': [path.resolve(__lib, 'extend.js'), '_extend'],
     'extend': [path.resolve(__lib, 'extend.js'), 'extend'],
-    'blink': path.resolve(__lib, 'blink.js'),
-    'instanceOf': path.resolve(__lib, 'instanceOf.js'),
+    'iof': path.resolve(__lib, 'instanceOf.js'),
     'defProp': [path.resolve(__helpers, 'def.js'), 'defProp'],
   }
 }
@@ -60,76 +62,50 @@ const replaceInstanceOf = {
 const injectEventLoopoptions = {
   exclude: path.resolve(__lib, 'event-loop.js') + '/**',
   modules: {
-    'setTimeout': [path.resolve(__lib, 'event-loop.js'), 'setTimeout'],
-    'setImmediate': [path.resolve(__lib, 'event-loop.js'), 'setImmediate'],
-    'setInterval': [path.resolve(__lib, 'event-loop.js'), 'setInterval']
+    'setTimeout': [path.resolve(__polyfill, 'event-loop.js'), 'setTimeout'],
+    'setImmediate': [path.resolve(__polyfill, 'event-loop.js'), 'setImmediate'],
+    'setInterval': [path.resolve(__polyfill, 'event-loop.js'), 'setInterval']
   }
 }
 
 const aliasedNodeModules = {
-  'ndef': path.resolve(__lib, 'ndef/dist/index.es6.js'),
-  'bus': path.resolve(__lib, 'bus/index.js'),
-  'schedule': path.resolve(__lib, 'schedule.js'),
+  // 'ndef': path.resolve(__lib, 'ndef/dist/index.js'),
+  // 'nfc': path.resolve(__lib, 'nfc/index.js'),
+  // 'bus': path.resolve(__lib, 'bus/index.js'),
+  // 'schedule': path.resolve(__lib, 'schedule.js'),
   'series': path.resolve(__helpers, 'series.js'),
   'callN': path.resolve(__helpers, 'callN.js'),
   'once': path.resolve(__helpers, 'callOnce.js')
 }
 
 const aliasedEspModules = {
-  'event-loop': path.resolve(__lib, 'event-loop.js'),
-  'events': path.resolve(__lib, 'polyfill/events.js'),
-  'stream': path.resolve(__lib, 'polyfill/stream/index.js'),
-  'buffer': path.resolve(__lib, 'polyfill/buffer/index.js'),
+  'event-loop': path.resolve(__polyfill, 'event-loop.js'),
+  // 'events': path.resolve(__lib, 'events.js'),
+  // 'stream': path.resolve(__lib, 'stream/index.js'),
+  // 'buffer': path.resolve(__lib, 'buffer/index.js'),
+  // 'blink': path.resolve(__lib, 'blink.js')
 }
 
 Object.assign(aliasedEspModules, aliasedNodeModules)
 
 const babelOptions = {
-  exclude: 'node_modules/**',
-  //babelrc: false,
-  presets: [
-    ['es2015', { modules: false }]
-  ],
-
-  plugins: [
-    //'external-helpers',
-    /*['transform-object-rest-spread', { loose: true }],
-    ['check-es2015-constants', { loose: true }],
-    ['transform-es2015-arrow-functions', { loose: true }],
-    ['transform-es2015-block-scoped-functions', { loose: true }],
-    ['transform-es2015-block-scoping', { loose: true }],
-    ['transform-es2015-classes', { loose: true }],
-    ['transform-es2015-computed-properties', { loose: true }],
-    ['transform-es2015-destructuring', { loose: true }],
-    ['transform-es2015-duplicate-keys', { loose: true }],
-    ['transform-es2015-for-of', { loose: true }],
-    ['transform-es2015-function-name', { loose: true }],
-    ['transform-es2015-literals', { loose: true }],
-    ['transform-es2015-object-super', { loose: true }],
-    ['transform-es2015-parameters', { loose: true }],
-    ['transform-es2015-shorthand-properties', { loose: true }],
-    ['transform-es2015-spread', { loose: true }],
-    ['transform-es2015-sticky-regex', { loose: true }],
-    ['transform-es2015-template-literals', { loose: true }],
-    ['transform-es2015-typeof-symbol', { loose: true }],
-    ['transform-es2015-unicode-regex', { loose: true }],
-    ['transform-regenerator', { loose: true }]
-    */
-  ]
+  exclude: 'node_modules/**'
 }
 
 const resolveOptions = {
+  module: true,
   jsnext: true,
   main: true,
   jail: __approot,
-  preferBuiltins: false
+  preferBuiltins: false,
+  customResolveOptions: {
+    moduleDirectory: ['lib', 'node_modules']
+  },
+  extensions: ['.js', '.json', '.yaml']
 }
 
 const commonjsOptions = {
-  include: /.+/,
-  namedExports: {
-    'ndef': ['foo', 'bar']
-  }
+  include: /.+/
 }
 
 const uglifyOptions = {
@@ -146,20 +122,17 @@ export default [
     },
 
     plugins: [
+      resolve(resolveOptions),
+
+      commonjs(commonjsOptions),
+
       replace(replaceInstanceOf),
 
       alias(aliasedNodeModules),
 
       inject(injectPolyfillExcludeNM),
 
-      commonjs(commonjsOptions),
-
-      resolve(resolveOptions)
-    ],
-
-    external: [
-      'events',
-      'stream'
+      yaml()
     ]
   },
 
@@ -171,6 +144,10 @@ export default [
     },
 
     plugins: [
+      resolve(resolveOptions),
+
+      commonjs(commonjsOptions),
+
       replace(replaceInstanceOf),
 
       alias(aliasedEspModules),
@@ -181,11 +158,9 @@ export default [
 
       inject(injectPolyfillExcludeNM),
 
-      babel(babelOptions),
+      yaml(),
 
-      commonjs(commonjsOptions),
-
-      resolve(resolveOptions)
+      babel(babelOptions)
     ]
   },
 
@@ -198,6 +173,10 @@ export default [
     },
 
     plugins: [
+      resolve(resolveOptions),
+
+      commonjs(commonjsOptions),
+
       replace(replaceInstanceOf),
 
       alias(aliasedEspModules),
@@ -208,9 +187,7 @@ export default [
 
       inject(injectPolyfillExcludeNM),
 
-      commonjs(commonjsOptions),
-
-      resolve(resolveOptions),
+      yaml(),
 
       babel(babelOptions),
 

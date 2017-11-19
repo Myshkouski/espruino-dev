@@ -1,15 +1,14 @@
-import Bytes from 'bytes'
+import Readable from 'stream/readable'
 
-const bus = new Bytes()
+const buffer = new Uint8Array([1, 2, 3])
 
-const frame = [0, 255, 0, 255, 255, 0]
-const data = frame.slice(0, 3).concat(frame)//frame.slice(0, 1)//.concat([1])
+function read(length) {
+  console.log(length)
+  this.push(buffer.slice(0, length))
+  this.push(null)
+}
 
-console.log(frame)
-console.log(data)
+const readable = new Readable({ read })
 
-bus.watch([frame], data => console.log(data))
-
-bus.on('error', err => console.error(err))
-
-bus.write(data)
+console.log(readable.read())
+console.log('!')
