@@ -611,22 +611,8 @@ _Readable.prototype = {
 
 			if (pipe) this.removeListener('data', pipe.listener);
 		} else {
-			for (var _iterator = this.pipes, _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
-				var _ref2;
-
-				if (_isArray) {
-					if (_i >= _iterator.length) break;
-					_ref2 = _iterator[_i++];
-				} else {
-					_i = _iterator.next();
-					if (_i.done) break;
-					_ref2 = _i.value;
-				}
-
-				var _ref = _ref2;
-				var listener = _ref.listener;
-
-				this.removeListener(listener);
+			for (var index in this.pipes) {
+				this.removeListener(this.pipes[index].listener);
 			}this.pipes.splice(0);
 		}
 	},

@@ -5,7 +5,7 @@ const { merge } = require('lodash')
 const __approot = resolve(__dirname, '../')
 const __helpers = resolve(__approot, 'helpers/')
 const __lib = resolve(__approot, 'lib/')
-const __polyfill = resolve(__lib, 'polyfill/')
+const __polyfill = resolve(__approot, 'polyfill/')
 
 module.exports = {
 	node: {

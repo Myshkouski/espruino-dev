@@ -5,7 +5,7 @@ const createReadable = (iterable = []) => {
   const buffer = new Uint8Array(iterable)
 
   function read(length) {
-    this.push(buffer.slice(0, length))
+    this.push(buffer)
     this.push(null)
   }
 
