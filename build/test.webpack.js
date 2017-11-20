@@ -5,7 +5,7 @@ const { merge } = require('lodash')
 const __approot = resolve(__dirname, '../')
 const __helpers = resolve(__approot, 'helpers/')
 const __lib = resolve(__approot, 'lib/')
-const __polyfill = resolve(__approot, 'polyfill/')
+const __globals = resolve(__approot, 'globals/')
 
 module.exports = {
 	node: {
@@ -22,11 +22,12 @@ module.exports = {
 
 	resolve: {
     alias: {
-			'event-loop': resolve(__polyfill, 'event-loop')
+			'event-loop': resolve(__globals, 'event-loop')
 		},
 
     modules: [
 			__lib,
+			__helpers,
 			'node_modules'
     ]
 	},
@@ -61,13 +62,13 @@ module.exports = {
 
 	plugins: [
 		new webpack.ProvidePlugin({
-			'_named': resolve(__helpers, 'namedFunc'),
-	    'extend': [resolve(__lib, 'extend'), 'extend'],
-			'_extend': [resolve(__lib, 'extend'), '_extend'],
-			'defProp': [resolve(__helpers, 'def.js'), 'defProp'],
-			'Buffer': resolve(__lib, 'buffer'),
-			'process': resolve(__polyfill, 'process'),
-			'setImmediate': [resolve(__polyfill, 'event-loop'), 'setImmediate']
+			'_named': resolve(__globals, 'namedFunc'),
+	    'extend': [resolve(__globals, 'extend'), 'extend'],
+			'_extend': [resolve(__globals, 'extend'), '_extend'],
+			'defProp': [resolve(__globals, 'def.js'), 'defProp'],
+			'Buffer': resolve(__globals, 'buffer'),
+			'process': resolve(__globals, 'process'),
+			'setImmediate': [resolve(__globals, 'event-loop'), 'setImmediate']
 		})
 	]
 }

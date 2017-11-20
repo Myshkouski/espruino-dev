@@ -117,24 +117,308 @@ const _extend = (options = {}) => {
   return Extended
 };
 
-function EventEmitter() { }
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-_named('EventEmitter', EventEmitter);
+function EventEmitter() {
+  this._events = this._events || {};
+  this._maxListeners = this._maxListeners || undefined;
+}
+var events = EventEmitter;
 
-EventEmitter.prototype.on = function on() {
-  Object.prototype.on.apply(this, arguments);
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
 
-  return this
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+EventEmitter.defaultMaxListeners = 10;
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!isNumber(n) || n < 0 || isNaN(n))
+    throw TypeError('n must be a positive number');
+  this._maxListeners = n;
+  return this;
 };
 
-EventEmitter.prototype.once = function once(event, listener) {
-  function _listener() {
-    this.removeListener(event, _listener);
-    return listener.apply(this, arguments)
+EventEmitter.prototype.emit = function(type) {
+  var er, handler, len, args, i, listeners;
+
+  if (!this._events)
+    this._events = {};
+
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events.error ||
+        (isObject(this._events.error) && !this._events.error.length)) {
+      er = arguments[1];
+      if (er instanceof Error) {
+        throw er; // Unhandled 'error' event
+      } else {
+        // At least give some kind of context to the user
+        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
+        err.context = er;
+        throw err;
+      }
+    }
   }
 
-  return this.on(event, _listener)
+  handler = this._events[type];
+
+  if (isUndefined(handler))
+    return false;
+
+  if (isFunction(handler)) {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+  } else if (isObject(handler)) {
+    args = Array.prototype.slice.call(arguments, 1);
+    listeners = handler.slice();
+    len = listeners.length;
+    for (i = 0; i < len; i++)
+      listeners[i].apply(this, args);
+  }
+
+  return true;
 };
+
+EventEmitter.prototype.addListener = function(type, listener) {
+  var m;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events)
+    this._events = {};
+
+  // To avoid recursion in the case that type === "newListener"! Before
+  // adding it to the listeners, first emit "newListener".
+  if (this._events.newListener)
+    this.emit('newListener', type,
+              isFunction(listener.listener) ?
+              listener.listener : listener);
+
+  if (!this._events[type])
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  else if (isObject(this._events[type]))
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  else
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+
+  // Check for listener leak
+  if (isObject(this._events[type]) && !this._events[type].warned) {
+    if (!isUndefined(this._maxListeners)) {
+      m = this._maxListeners;
+    } else {
+      m = EventEmitter.defaultMaxListeners;
+    }
+
+    if (m && m > 0 && this._events[type].length > m) {
+      this._events[type].warned = true;
+      console.error('(node) warning: possible EventEmitter memory ' +
+                    'leak detected. %d listeners added. ' +
+                    'Use emitter.setMaxListeners() to increase limit.',
+                    this._events[type].length);
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
+    }
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  var fired = false;
+
+  function g() {
+    this.removeListener(type, g);
+
+    if (!fired) {
+      fired = true;
+      listener.apply(this, arguments);
+    }
+  }
+
+  g.listener = listener;
+  this.on(type, g);
+
+  return this;
+};
+
+// emits a 'removeListener' event iff the listener was removed
+EventEmitter.prototype.removeListener = function(type, listener) {
+  var list, position, length, i;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events || !this._events[type])
+    return this;
+
+  list = this._events[type];
+  length = list.length;
+  position = -1;
+
+  if (list === listener ||
+      (isFunction(list.listener) && list.listener === listener)) {
+    delete this._events[type];
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+
+  } else if (isObject(list)) {
+    for (i = length; i-- > 0;) {
+      if (list[i] === listener ||
+          (list[i].listener && list[i].listener === listener)) {
+        position = i;
+        break;
+      }
+    }
+
+    if (position < 0)
+      return this;
+
+    if (list.length === 1) {
+      list.length = 0;
+      delete this._events[type];
+    } else {
+      list.splice(position, 1);
+    }
+
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  var key, listeners;
+
+  if (!this._events)
+    return this;
+
+  // not listening for removeListener, no need to emit
+  if (!this._events.removeListener) {
+    if (arguments.length === 0)
+      this._events = {};
+    else if (this._events[type])
+      delete this._events[type];
+    return this;
+  }
+
+  // emit removeListener for all listeners on all events
+  if (arguments.length === 0) {
+    for (key in this._events) {
+      if (key === 'removeListener') continue;
+      this.removeAllListeners(key);
+    }
+    this.removeAllListeners('removeListener');
+    this._events = {};
+    return this;
+  }
+
+  listeners = this._events[type];
+
+  if (isFunction(listeners)) {
+    this.removeListener(type, listeners);
+  } else if (listeners) {
+    // LIFO order
+    while (listeners.length)
+      this.removeListener(type, listeners[listeners.length - 1]);
+  }
+  delete this._events[type];
+
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  var ret;
+  if (!this._events || !this._events[type])
+    ret = [];
+  else if (isFunction(this._events[type]))
+    ret = [this._events[type]];
+  else
+    ret = this._events[type].slice();
+  return ret;
+};
+
+EventEmitter.prototype.listenerCount = function(type) {
+  if (this._events) {
+    var evlistener = this._events[type];
+
+    if (isFunction(evlistener))
+      return 1;
+    else if (evlistener)
+      return evlistener.length;
+  }
+  return 0;
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  return emitter.listenerCount(type);
+};
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
 
 function _Stream(options = {}) {
 	this.options = {
@@ -144,15 +428,15 @@ function _Stream(options = {}) {
 
 const Stream = _extend({
 	name: 'Stream',
-	super: [EventEmitter],
-	apply: [EventEmitter, _named('Stream', _Stream)]
+	super: [events],
+	apply: [events, _named('Stream', _Stream)]
 });
 
 Stream.prototype.emit = function (event, err) {
 	if(event === 'error' && !(this['#onerror'] || this._events['error']))
 		throw new Error(err)
 
-	return EventEmitter.prototype.emit.apply(this, arguments)
+	return events.prototype.emit.apply(this, arguments)
 };
 
 function BufferState(options = {}) {
@@ -286,21 +570,31 @@ function toString(binary) {
 	return str
 }
 
-function _broadcast() {
-	let chunk = this.read();
-	if(chunk && chunk.length) {
-		process.nextTick(() => {
-			if(this._readableState.defaultEncoding == encodings.UTF8) {
-				chunk = toString(chunk);
-			}
-			this.emit('data', chunk, this._readableState.defaultEncoding);
-		});
-	}
-}
+// function _broadcast() {
+// 	let chunk = this.read()
+// 	if(chunk && chunk.length) {
+// 		process.nextTick(() => {
+// 			if(this._readableState.defaultEncoding == encodings.UTF8) {
+// 				chunk = toString(chunk)
+// 			}
+// 			this.emit('data', chunk, this._readableState.defaultEncoding)
+// 		})
+// 	}
+// }
 
 function _flow() {
-	if(this._readableState.flowing)
-		 _broadcast.call(this);
+	if(this._readableState.flowing) {
+		// _broadcast.call(this)
+		let chunk = this.read();
+		if(chunk && chunk.length) {
+			process.nextTick(() => {
+				if(this._readableState.defaultEncoding == encodings.UTF8) {
+					chunk = toString(chunk);
+				}
+				this.emit('data', chunk, this._readableState.defaultEncoding);
+			});
+		}
+	}
 }
 
 function _end() {
@@ -655,9 +949,20 @@ _Schedule.prototype = {
 
 const Schedule = _extend({
   name: 'Schedule',
-  super: [EventEmitter, _named('Schedule', _Schedule)],
-  apply: [EventEmitter, _named('Schedule', _Schedule)]
+  super: [events, _named('Schedule', _Schedule)],
+  apply: [events, _named('Schedule', _Schedule)]
 });
+
+function series(arr, cb, done) {
+  let i = 0;(function next(res) {
+    if (res !== undefined || i >= arr.length) {
+      done && done(res);
+    }
+    else {
+      setImmediate(() => cb(next, arr[i], i++, arr));
+    }
+  })();
+}
 
 function _parse(chunk, encoding, cb) {
   const { incoming, watching, frame } = this._busState;
@@ -782,9 +1087,9 @@ function _parse(chunk, encoding, cb) {
         });
         /*
         if(!isChunkCorrupted) {
-          isChunkCorrupted = !0
+          isChunkCorrupted = true
           setImmediate(() => {
-            isChunkCorrupted = !1
+            isChunkCorrupted = false
             this.emit('error', {
               msg: 'Unparsed chunk',
               data: frame.splice(0)
@@ -796,18 +1101,6 @@ function _parse(chunk, encoding, cb) {
   }
 
   cb();
-}
-
-function series(arr,done) {
-  let i = 0;
-  (function next(err) {
-    if (err !== undefined || i >= arr.length) {
-      done(err);
-    }
-    else {
-      setImmediate(() => arr[i++](next));
-    }
-  })();
 }
 
 function _write(chunk, encoding, cb) {
@@ -967,7 +1260,8 @@ var data = { PN532_PREAMBLE:0,
   PN532_STARTCODE1:0,
   PN532_STARTCODE2:255,
   PN532_POSTAMBLE:0,
-  PN532_HOSTTOPN532:212,
+  PN532_HOST_TO_PN532:212,
+  PN532_PN532_TO_HOST:213,
   PN532_COMMAND_DIAGNOSE:0,
   PN532_COMMAND_GETFIRMWAREVERSION:2,
   PN532_COMMAND_GETGENERALSTATUS:4,
@@ -1080,7 +1374,8 @@ var PN532_PREAMBLE = data.PN532_PREAMBLE;
 var PN532_STARTCODE1 = data.PN532_STARTCODE1;
 var PN532_STARTCODE2 = data.PN532_STARTCODE2;
 var PN532_POSTAMBLE = data.PN532_POSTAMBLE;
-var PN532_HOSTTOPN532 = data.PN532_HOSTTOPN532;
+var PN532_HOST_TO_PN532 = data.PN532_HOST_TO_PN532;
+var PN532_PN532_TO_HOST = data.PN532_PN532_TO_HOST;
 
 
 
@@ -1178,26 +1473,51 @@ var MIFARE_CMD_WRITE_4 = data.MIFARE_CMD_WRITE_4;
 
 var PN532_SAM_NORMAL_MODE = data.PN532_SAM_NORMAL_MODE;
 
-const cmd = command => {
-  let i, arr = [
+const check = values => 0x00 == 0xff & values.reduce((sum, value) => sum += value, 0x00);
+
+const LCS_std = (byte, length, frame) => check(frame.slice(-2));
+
+const CHECKSUM_std = (byte, length, frame) => check(frame.slice(5));
+
+const BODY_std = frame => {
+  const arr = [];
+  for(let i = 0; i < frame[3] - 1; i ++)
+    arr.push(undefined);
+  return arr
+};
+
+const info = [
+  [PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS_std, PN532_PN532_TO_HOST],
+  BODY_std,
+  [CHECKSUM_std, PN532_POSTAMBLE]
+];
+
+
+
+const err = [
+  [PN532_PREAMBLE, PN532_STARTCODE1 , PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM_std, PN532_POSTAMBLE]
+];
+
+const ack = [
+  new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE])
+];
+
+
+
+
+const command = command =>
+  new Uint8ClampedArray([
     PN532_PREAMBLE,
     PN532_STARTCODE1,
     PN532_STARTCODE2,
-    command.length + 1,
-    (~command.length) & 0xff,
-    PN532_HOSTTOPN532
-  ].concat(command);
-
-  let checksum = -arr[0];
-  for (i in arr)
-    checksum+=arr[i];
-  arr.push((~checksum) & 0xFF);
-  checksum=0;
-  for (i in arr)
-    checksum+=arr[i];
-  arr.push(PN532_POSTAMBLE);
-  return new Uint8ClampedArray(arr)
-};
+    0xff & (command.length + 1),
+    0xff & (~command.length),
+    PN532_HOST_TO_PN532,
+    ...command,
+    // checksum
+    ~(0xff & command.reduce((checksum, byte) => checksum += byte, 1 /** include PN532_HOST_TO_PN532 1 byte to length */)),
+    PN532_POSTAMBLE
+  ]);
 
 var data$2 = { TNF_EMPTY: 0,
   TNF_WELL_KNOWN: 1,
@@ -1267,10 +1587,18 @@ var decode$1 = function decode(data) {
 };
 
 /**
-  * shorten a URI with standard prefix
-  *
-  * @returns an array of bytes
-  */
+ * Creates a JSON representation of a NDEF Record.
+ *
+ * @tnf 3-bit TNF (Type Name Format) - use one of the constants.TNF_* constants
+ * @type byte array, containing zero to 255 bytes, must not be null
+ * @id byte array, containing zero to 255 bytes, must not be null
+ * @payload byte array, containing zero to (2 ** 32 - 1) bytes, must not be null
+ *
+ * @returns JSON representation of a NDEF record
+ *
+ * @see Ndef.textRecord, Ndef.uriRecord and Ndef.mimeMediaRecord for examples
+ */
+
 var record = function record(tnf, type, id, payload, value) {
   if (!tnf) {
     tnf = data$2.TNF_EMPTY;
@@ -1330,11 +1658,14 @@ var textRecord = function textRecord(text, languageCode, id) {
 };
 
 /**
- * Helper that creates a NDEF record containing a URI.
- *
- * @uri String
- * @id byte[] (optional)
- */
+* Encodes an NDEF Message into bytes that can be written to a NFC tag.
+*
+* @ndefRecords an Array of NDEF Records
+*
+* @returns byte array
+*
+* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
+*/
 var encodeMessage = function encodeMessage(ndefRecords) {
   var encoded = [],
       tnf_byte = void 0,
@@ -1393,13 +1724,11 @@ var encodeMessage = function encodeMessage(ndefRecords) {
 };
 
 /**
-* Decodes an array bytes into an NDEF Message
+* Encode NDEF bit flags into a TNF Byte.
 *
-* @bytes an array bytes read from a NFC tag
+* @returns tnf byte
 *
-* @returns array of NDEF Records
-*
-* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
+*  See NFC Data Exchange Format (NDEF) Specification Section 3.2 RecordLayout
 */
 var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   if (!value) {
@@ -1430,58 +1759,14 @@ var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   return value;
 };
 
-// TODO test with byte[] and string
-
 blink();
 
 const encoded = encodeMessage([
   textRecord('2enhello world!')
 ]);
 
-function shrinkToUint8 (values) {
-  return values.reduce((sum, value) => {
-    sum += value;
-
-    while(sum > 0xff) {
-      const remainder = sum & 0xff;
-      sum = sum >> 8;
-      sum += remainder - 1;
-    }
-    return sum
-  }, 0x00)
-}
-
-function LCS_std(byte, length, frame) {
-  return 0x00 === shrinkToUint8(frame.slice(-2))
-}
-
-function CHECKSUM_std(byte, length, frame) {
-  return 0x00 === shrinkToUint8(frame.slice(5))
-}
-
-function BODY_std (frame) {
-  const arr = [];
-  for(let i = 0; i < frame[3] - 1; i ++)
-    arr.push(undefined);
-  return arr
-}
-
-const INFO_FRAME_std = [
-  [0, 0, 0xff, undefined, LCS_std, 0xd5],
-  BODY_std,
-  [CHECKSUM_std, 0x00]
-];
-
-const ERR_FRAME = [
-  [0, 0 , 0xff, 0x01, 0xff, undefined, CHECKSUM_std, 0x00]
-];
-
-const ACK_FRAME = [
-  new Uint8ClampedArray([0, 0, 255, 0, 255, 0])
-];
-
-const wakeup = cmd([PN532_WAKEUP]);
-const sam = cmd([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
+const wakeup = command([PN532_WAKEUP]);
+const sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
 
 
 
@@ -1521,17 +1806,17 @@ const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
       block = 4;
 
   bus.deferred(done => {
-    const LIST = cmd([
+    const LIST = command([
       PN532_COMMAND_INLISTPASSIVETARGET,
       1,
       0
     ]);
 
-    bus.rx(ACK_FRAME, ack => {
+    bus.rx(ack, () => {
       console.log('ACK');
     });
 
-    bus.rx(INFO_FRAME_std, frame => {
+    bus.rx(info, frame => {
       const body = frame.slice(7, 5 + frame[3]),
             uidLength = body[5],
             _uid = body.slice(6, 6 + uidLength);
@@ -1555,18 +1840,18 @@ const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
   });
 
   bus.deferred((done, fail) => {
-    const AUTH = cmd([
+    const AUTH = command([
       PN532_COMMAND_INDATAEXCHANGE,
       1,
       MIFARE_CMD_AUTH_A,
       block
     ].concat(KEY).concat(uid));
 
-    bus.rx(ACK_FRAME, ack => {});
+    bus.rx(ack, ack$$1 => {});
 
-    bus.rx(ERR_FRAME, fail);
+    bus.rx(err, fail);
 
-    bus.rx(INFO_FRAME_std, frame => {
+    bus.rx(info, frame => {
       console.log('AUTH SUCCEED'/*, {
         code: frame[6],
         body: frame.slice(7, 5 + frame[3])
@@ -1579,18 +1864,18 @@ const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
   });
 
   bus.deferred((done, fail) => {
-    const WRITE = cmd([
+    const WRITE = command([
       PN532_COMMAND_INDATAEXCHANGE,
       1,
       MIFARE_CMD_WRITE_4,
       block
     ].concat(encoded));
 
-    bus.rx(ACK_FRAME, ack => {});
+    bus.rx(ack, ack$$1 => {});
 
-    bus.rx(ERR_FRAME, fail);
+    bus.rx(err, fail);
 
-    bus.rx(INFO_FRAME_std, block => {
+    bus.rx(info, block => {
       console.log('WRITE SUCCEED');
 
       done();
@@ -1600,19 +1885,18 @@ const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
   });
 
   bus.deferred((done, fail) => {
-    console.log('READ');
-    const READ = cmd([
+    const READ = command([
       PN532_COMMAND_INDATAEXCHANGE,
       1,
       MIFARE_CMD_READ,
       block
     ]);
 
-    bus.rx(ACK_FRAME, ack => {});
+    bus.rx(ack, ack$$1 => {});
 
-    //bus.rx(ERR_FRAME, fail)
+    bus.rx(err, fail);
 
-    bus.rx(INFO_FRAME_std, block => {
+    bus.rx(info, block => {
       console.log("RED", block);
 
       done();
@@ -1623,7 +1907,7 @@ const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
 
   bus.deferred(done => {
     setTimeout(() => {
-      console.log(process.memory());
+      console.log(process.memory().free);
       done();
       poll();
     }, 1000);

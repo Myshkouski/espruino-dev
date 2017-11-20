@@ -1,12 +1,12 @@
-const PUSH_TO_QUEUE_IMMEDIATE = !0,
-      PUSH_AT_NEXT_STAGE = !1,
+const PUSH_TO_QUEUE_IMMEDIATE = 0,
+      PUSH_AT_NEXT_STAGE = 1,
       loop = [
         // nextTick
-        { queue: [], handle: PUSH_TO_QUEUE_IMMEDIATE, tick: false },
+        { queue: [], immediatePush: true, tick: false },
         // immediate
-        { queue: [], handle: PUSH_TO_QUEUE_IMMEDIATE, tick: false },
+        { queue: [], immediatePush: true, tick: false },
         // timeout
-        { queue: [], handle: PUSH_AT_NEXT_STAGE, tick: false }
+        { queue: [], immediatePush: false, tick: false }
       ]
 
 let tick = false,
@@ -15,12 +15,12 @@ let tick = false,
 const asyncFlush = () => {
   for (let stage in loop) {
     if(loop[stage].queue.length) {
-      if(loop[stage].handle == PUSH_TO_QUEUE_IMMEDIATE) {
+      if(loop[stage].immediatePush) {
         for (let exec = 0; exec < loop[stage].queue.length; exec ++) {
           loop[stage].queue[exec]()
         }
         loop[stage].queue.splice(0)
-      } else /*if(loop[stage].handle == PUSH_AT_NEXT_STAGE)*/ {
+      } else {
         const queue = loop[stage].queue.splice(0)
         for (let exec = 0; exec < queue.length; exec ++) {
           queue[exec]()
@@ -48,26 +48,30 @@ const setImmediate = asyncCall(/* .immediate */1)
 
 const timeoutCall = asyncCall(/* .timeeout */2)
 
-const _setTimeout = (cb, timeout) => {
-  let index = 0
-  while(timers[index]) {
-    index++
-  }
-  timers[index] = setTimeout(() => {
-    if(timers[index]) {
-      delete timers[index]
-      timeoutCall(cb)
-    }
-  }, timeout)
+export const _setTimeout = (cb, timeout) => {
+  // let index = 0
+  // while(timers[index]) {
+  //   index++
+  // }
+  // timers[index] = setTimeout(() => {
+  //   if(timers[index]) {
+  //     delete timers[index]
+  //     timeoutCall(cb)
+  //   }
+  // }, timeout)
+  //
+  // return index
 
-  return index
+  return setTimeout(() => {
+    timeoutCall(cb)
+  }, timeout)
 }
 
-const setInterval = (cb, timeout) => {
+export const _setInterval = (cb, timeout) => {
   return (function setTimer() {
     return _setTimeout(() => {
-      cb()
       setTimer()
+      cb()
     }, timeout)
   })()
 }
@@ -76,5 +80,5 @@ export {
   nextTick,
   setImmediate,
   _setTimeout as setTimeout,
-  setInterval
+  _setInterval as setInterval
 }

@@ -1,32 +1,29 @@
 'use strict';
 
-var PUSH_TO_QUEUE_IMMEDIATE = !0;
-var PUSH_AT_NEXT_STAGE = !1;
 var loop = [
 // nextTick
-{ queue: [], handle: PUSH_TO_QUEUE_IMMEDIATE, tick: false },
+{ queue: [], immediatePush: true, tick: false },
 // immediate
-{ queue: [], handle: PUSH_TO_QUEUE_IMMEDIATE, tick: false },
+{ queue: [], immediatePush: true, tick: false },
 // timeout
-{ queue: [], handle: PUSH_AT_NEXT_STAGE, tick: false }];
+{ queue: [], immediatePush: false, tick: false }];
 
 var tick = false;
-var timers = {};
 
 var asyncFlush = function asyncFlush() {
   for (var stage in loop) {
     if (loop[stage].queue.length) {
-      if (loop[stage].handle == PUSH_TO_QUEUE_IMMEDIATE) {
+      if (loop[stage].immediatePush) {
         for (var exec = 0; exec < loop[stage].queue.length; exec++) {
           loop[stage].queue[exec]();
         }
         loop[stage].queue.splice(0);
-      } else /*if(loop[stage].handle == PUSH_AT_NEXT_STAGE)*/{
-          var queue = loop[stage].queue.splice(0);
-          for (var _exec = 0; _exec < queue.length; _exec++) {
-            queue[_exec]();
-          }
+      } else {
+        var queue = loop[stage].queue.splice(0);
+        for (var _exec = 0; _exec < queue.length; _exec++) {
+          queue[_exec]();
         }
+      }
     }
 
     loop[stage].tick = tick = false;
@@ -52,18 +49,22 @@ var setImmediate = asyncCall( /* .immediate */1);
 var timeoutCall = asyncCall( /* .timeeout */2);
 
 var _setTimeout = function _setTimeout(cb, timeout) {
-  var index = 0;
-  while (timers[index]) {
-    index++;
-  }
-  timers[index] = setTimeout(function () {
-    if (timers[index]) {
-      delete timers[index];
-      timeoutCall(cb);
-    }
-  }, timeout);
+  // let index = 0
+  // while(timers[index]) {
+  //   index++
+  // }
+  // timers[index] = setTimeout(() => {
+  //   if(timers[index]) {
+  //     delete timers[index]
+  //     timeoutCall(cb)
+  //   }
+  // }, timeout)
+  //
+  // return index
 
-  return index;
+  return setTimeout(function () {
+    timeoutCall(cb);
+  }, timeout);
 };
 
 var _process = typeof process !== 'undefined' ? process : {};
@@ -118,8 +119,6 @@ Object.assign = function (target) {
 
   return target;
 };
-
-//Object.freeze = obj => obj
 
 var defProp = function defProp(obj, prop, desc) {
   try {
@@ -254,24 +253,575 @@ Array.prototype.concat = function () {
   return concatenated;
 };
 
-function EventEmitter() {}
+// var PENDING = 'pending'
+// var SEALED = 'sealed'
+// var FULFILLED = 'fulfilled'
+// var REJECTED = 'rejected'
+//
+// var NOOP = function() {}
+//
+// function invokeResolver(resolver, promise) {
+//   function resolvePromise(value) {
+//     resolve(promise, value)
+//   }
+//
+//   function rejectPromise(reason) {
+//     reject(promise, reason)
+//   }
+//
+//   try {
+//     resolver(resolvePromise, rejectPromise)
+//   } catch(e) {
+//     rejectPromise(e)
+//   }
+// }
+//
+// function invokeCallback(subscriber) {
+//   var owner = subscriber.owner
+//   var settled = owner.state_
+//   var value = owner.data_
+//   var callback = subscriber[settled]
+//   var promise = subscriber.then
+//
+//   if (typeof callback === 'function')
+//   {
+//     settled = FULFILLED
+//     try {
+//       value = callback(value)
+//     } catch(e) {
+//       reject(promise, e)
+//     }
+//   }
+//
+//   if (!handleThenable(promise, value))
+//   {
+//     if (settled === FULFILLED)
+//       resolve(promise, value)
+//
+//     if (settled === REJECTED)
+//       reject(promise, value)
+//   }
+// }
+//
+// function handleThenable(promise, value) {
+//   var resolved
+//
+//   try {
+//     if (promise === value)
+//       throw new TypeError('A promises callback cannot return that same promise.')
+//
+//     if (value && (typeof value === 'function' || typeof value === 'object'))
+//     {
+//       var then = value.then  // then should be retrived only once
+//
+//       if (typeof then === 'function')
+//       {
+//         then.call(value, function(val){
+//           if (!resolved)
+//           {
+//             resolved = true
+//
+//             if (value !== val)
+//               resolve(promise, val)
+//             else
+//               fulfill(promise, val)
+//           }
+//         }, function(reason){
+//           if (!resolved)
+//           {
+//             resolved = true
+//
+//             reject(promise, reason)
+//           }
+//         })
+//
+//         return true
+//       }
+//     }
+//   } catch (e) {
+//     if (!resolved)
+//       reject(promise, e)
+//
+//     return true
+//   }
+//
+//   return false
+// }
+//
+// function resolve(promise, value){
+//   if (promise === value || !handleThenable(promise, value))
+//     fulfill(promise, value)
+// }
+//
+// function publish(promise) {
+//   var callbacks = promise.then_
+//   promise.then_ = undefined
+//
+//   for (var i = 0 i < callbacks.length i++) {
+//     invokeCallback(callbacks[i])
+//   }
+// }
+//
+// function fulfill(promise, value){
+//   if (promise.state_ === PENDING)
+//   {
+//     promise.state_ = SEALED
+//     promise.data_ = value
+//
+//     setImmediate(() => {
+//       promise.state_ = FULFILLED
+//       publish(promise)
+//     })
+//   }
+// }
+//
+// function reject(promise, reason){
+//   if (promise.state_ === PENDING)
+//   {
+//     promise.state_ = SEALED
+//     promise.data_ = reason
+//
+//     setImmediate(() => {
+//       promise.state_ = REJECTED
+//       publish(promise)
+//     })
+//   }
+// }
+//
+// function Promise(resolver) {
+//   if (typeof resolver !== 'function')
+//     throw new TypeError('Promise constructor takes a function argument')
+//
+//   if (this instanceof Promise === false)
+//     throw new TypeError('Failed to construct \'Promise\': Please use the \'new\' operator, this object constructor cannot be called as a function.')
+//
+//   this.then_ = []
+//
+//   invokeResolver(resolver, this)
+// }
+//
+// Promise.prototype = {
+//   constructor: Promise,
+//
+//   state_: PENDING,
+//   then_: null,
+//   data_: undefined,
+//
+//   then: function(onFulfillment, onRejection){
+//     var subscriber = {
+//       owner: this,
+//       then: new this.constructor(NOOP),
+//       fulfilled: onFulfillment,
+//       rejected: onRejection
+//     }
+//
+//     if (this.state_ === FULFILLED || this.state_ === REJECTED)
+//     {
+//       // already resolved, call callback async
+//       setImmediate(() => {invokeCallback(subscriber)})
+//     }
+//     else
+//     {
+//       // subscribe
+//       this.then_.push(subscriber)
+//     }
+//
+//     return subscriber.then
+//   },
+//
+//   'catch': function(onRejection) {
+//     return this.then(null, onRejection)
+//   }
+// }
+//
+// Promise.all = function(promises){
+//   var Class = this
+//
+//   if (!(promises instanceof Array))
+//     throw new TypeError('You must pass an array to Promise.all().')
+//
+//   return new Class((resolve, reject) => {
+//     var results = []
+//     var remaining = 0
+//
+//     function resolver(index){
+//       remaining++
+//       return function(value){
+//         results[index] = value
+//         if (!--remaining)
+//           resolve(results)
+//       }
+//     }
+//
+//     for (var i = 0, promise i < promises.length i++)
+//     {
+//       promise = promises[i]
+//
+//       if (promise && typeof promise.then === 'function')
+//         promise.then(resolver(i), reject)
+//       else
+//         results[i] = promise
+//     }
+//
+//     if (!remaining)
+//       resolve(results)
+//   })
+// }
+//
+// Promise.race = function(promises){
+//   var Class = this
+//
+//   if (!(promises instanceof Array))
+//     throw new TypeError('You must pass an array to Promise.race().')
+//
+//   return new Class((resolve, reject) => {
+//     for (var i = 0, promise i < promises.length i++)
+//     {
+//       promise = promises[i]
+//
+//       if (promise && typeof promise.then === 'function')
+//         promise.then(resolve, reject)
+//       else
+//         resolve(promise)
+//     }
+//   })
+// }
+//
+// Promise.resolve = function(value) {
+//   var Class = this
+//
+//   if (value && typeof value === 'object' && value.constructor === Class)
+//     return value
+//
+//   return new Class(function(resolve){
+//     resolve(value)
+//   })
+// }
+//
+// Promise.reject = function(reason){
+//   var Class = this
+//
+//   return new Class(function(resolve, reject){
+//     reject(reason)
+//   })
+// }
+//
+if (!Promise.race) {
+  Promise.race = function (promises) {
+    if (!(promises instanceof Array)) throw new TypeError('You must pass an array to Promise.race().');
 
-_named('EventEmitter', EventEmitter);
+    return new Promise(function (resolve, reject) {
+      for (var i = 0, promise; i < promises.length; i++) {
+        promise = promises[i];
 
-EventEmitter.prototype.on = function on() {
-  Object.prototype.on.apply(this, arguments);
+        promise && typeof promise.then === 'function' ? promise.then(resolve, reject) : resolve(promise);
+      }
+    });
+  };
+}
+
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+function EventEmitter() {
+  this._events = this._events || {};
+  this._maxListeners = this._maxListeners || undefined;
+}
+var events = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+EventEmitter.defaultMaxListeners = 10;
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!isNumber(n) || n < 0 || isNaN(n))
+    throw TypeError('n must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+EventEmitter.prototype.emit = function(type) {
+  var er, handler, len, args, i, listeners;
+
+  if (!this._events)
+    this._events = {};
+
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events.error ||
+        (isObject(this._events.error) && !this._events.error.length)) {
+      er = arguments[1];
+      if (er instanceof Error) {
+        throw er; // Unhandled 'error' event
+      } else {
+        // At least give some kind of context to the user
+        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
+        err.context = er;
+        throw err;
+      }
+    }
+  }
+
+  handler = this._events[type];
+
+  if (isUndefined(handler))
+    return false;
+
+  if (isFunction(handler)) {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+  } else if (isObject(handler)) {
+    args = Array.prototype.slice.call(arguments, 1);
+    listeners = handler.slice();
+    len = listeners.length;
+    for (i = 0; i < len; i++)
+      listeners[i].apply(this, args);
+  }
+
+  return true;
+};
+
+EventEmitter.prototype.addListener = function(type, listener) {
+  var m;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events)
+    this._events = {};
+
+  // To avoid recursion in the case that type === "newListener"! Before
+  // adding it to the listeners, first emit "newListener".
+  if (this._events.newListener)
+    this.emit('newListener', type,
+              isFunction(listener.listener) ?
+              listener.listener : listener);
+
+  if (!this._events[type])
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  else if (isObject(this._events[type]))
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  else
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+
+  // Check for listener leak
+  if (isObject(this._events[type]) && !this._events[type].warned) {
+    if (!isUndefined(this._maxListeners)) {
+      m = this._maxListeners;
+    } else {
+      m = EventEmitter.defaultMaxListeners;
+    }
+
+    if (m && m > 0 && this._events[type].length > m) {
+      this._events[type].warned = true;
+      console.error('(node) warning: possible EventEmitter memory ' +
+                    'leak detected. %d listeners added. ' +
+                    'Use emitter.setMaxListeners() to increase limit.',
+                    this._events[type].length);
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
+    }
+  }
 
   return this;
 };
 
-EventEmitter.prototype.once = function once(event, listener) {
-  function _listener() {
-    this.removeListener(event, _listener);
-    return listener.apply(this, arguments);
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  var fired = false;
+
+  function g() {
+    this.removeListener(type, g);
+
+    if (!fired) {
+      fired = true;
+      listener.apply(this, arguments);
+    }
   }
 
-  return this.on(event, _listener);
+  g.listener = listener;
+  this.on(type, g);
+
+  return this;
 };
+
+// emits a 'removeListener' event iff the listener was removed
+EventEmitter.prototype.removeListener = function(type, listener) {
+  var list, position, length, i;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events || !this._events[type])
+    return this;
+
+  list = this._events[type];
+  length = list.length;
+  position = -1;
+
+  if (list === listener ||
+      (isFunction(list.listener) && list.listener === listener)) {
+    delete this._events[type];
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+
+  } else if (isObject(list)) {
+    for (i = length; i-- > 0;) {
+      if (list[i] === listener ||
+          (list[i].listener && list[i].listener === listener)) {
+        position = i;
+        break;
+      }
+    }
+
+    if (position < 0)
+      return this;
+
+    if (list.length === 1) {
+      list.length = 0;
+      delete this._events[type];
+    } else {
+      list.splice(position, 1);
+    }
+
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  var key, listeners;
+
+  if (!this._events)
+    return this;
+
+  // not listening for removeListener, no need to emit
+  if (!this._events.removeListener) {
+    if (arguments.length === 0)
+      this._events = {};
+    else if (this._events[type])
+      delete this._events[type];
+    return this;
+  }
+
+  // emit removeListener for all listeners on all events
+  if (arguments.length === 0) {
+    for (key in this._events) {
+      if (key === 'removeListener') continue;
+      this.removeAllListeners(key);
+    }
+    this.removeAllListeners('removeListener');
+    this._events = {};
+    return this;
+  }
+
+  listeners = this._events[type];
+
+  if (isFunction(listeners)) {
+    this.removeListener(type, listeners);
+  } else if (listeners) {
+    // LIFO order
+    while (listeners.length)
+      this.removeListener(type, listeners[listeners.length - 1]);
+  }
+  delete this._events[type];
+
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  var ret;
+  if (!this._events || !this._events[type])
+    ret = [];
+  else if (isFunction(this._events[type]))
+    ret = [this._events[type]];
+  else
+    ret = this._events[type].slice();
+  return ret;
+};
+
+EventEmitter.prototype.listenerCount = function(type) {
+  if (this._events) {
+    var evlistener = this._events[type];
+
+    if (isFunction(evlistener))
+      return 1;
+    else if (evlistener)
+      return evlistener.length;
+  }
+  return 0;
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  return emitter.listenerCount(type);
+};
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
 
 function _Stream() {
 	var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -283,14 +833,14 @@ function _Stream() {
 
 var Stream = _extend({
 	name: 'Stream',
-	super: [EventEmitter],
-	apply: [EventEmitter, _named('Stream', _Stream)]
+	super: [events],
+	apply: [events, _named('Stream', _Stream)]
 });
 
 Stream.prototype.emit = function (event, err) {
 	if (event === 'error' && !(this['#onerror'] || this._events['error'])) throw new Error(err);
 
-	return EventEmitter.prototype.emit.apply(this, arguments);
+	return events.prototype.emit.apply(this, arguments);
 };
 
 function Buffer() {
@@ -474,22 +1024,33 @@ function toString(binary) {
 	}return str;
 }
 
-function _broadcast() {
-	var _this = this;
-
-	var chunk = this.read();
-	if (chunk && chunk.length) {
-		_process.nextTick(function () {
-			if (_this._readableState.defaultEncoding == encodings.UTF8) {
-				chunk = toString(chunk);
-			}
-			_this.emit('data', chunk, _this._readableState.defaultEncoding);
-		});
-	}
-}
+// function _broadcast() {
+// 	let chunk = this.read()
+// 	if(chunk && chunk.length) {
+// 		process.nextTick(() => {
+// 			if(this._readableState.defaultEncoding == encodings.UTF8) {
+// 				chunk = toString(chunk)
+// 			}
+// 			this.emit('data', chunk, this._readableState.defaultEncoding)
+// 		})
+// 	}
+// }
 
 function _flow() {
-	if (this._readableState.flowing) _broadcast.call(this);
+	var _this = this;
+
+	if (this._readableState.flowing) {
+		// _broadcast.call(this)
+		var chunk = this.read();
+		if (chunk && chunk.length) {
+			_process.nextTick(function () {
+				if (_this._readableState.defaultEncoding == encodings.UTF8) {
+					chunk = toString(chunk);
+				}
+				_this.emit('data', chunk, _this._readableState.defaultEncoding);
+			});
+		}
+	}
 }
 
 function _end() {
@@ -854,9 +1415,21 @@ _Schedule.prototype = {
 
 var Schedule = _extend({
   name: 'Schedule',
-  super: [EventEmitter, _named('Schedule', _Schedule)],
-  apply: [EventEmitter, _named('Schedule', _Schedule)]
+  super: [events, _named('Schedule', _Schedule)],
+  apply: [events, _named('Schedule', _Schedule)]
 });
+
+function series(arr, cb, done) {
+  var i = 0;(function next(res) {
+    if (res !== undefined || i >= arr.length) {
+      done && done(res);
+    } else {
+      setImmediate(function () {
+        return cb(next, arr[i], i++, arr);
+      });
+    }
+  })();
+}
 
 function _parse(chunk, encoding, cb) {
   var _busState = this._busState,
@@ -972,9 +1545,9 @@ function _parse(chunk, encoding, cb) {
         });
         /*
         if(!isChunkCorrupted) {
-          isChunkCorrupted = !0
+          isChunkCorrupted = true
           setImmediate(() => {
-            isChunkCorrupted = !1
+            isChunkCorrupted = false
             this.emit('error', {
               msg: 'Unparsed chunk',
               data: frame.splice(0)
@@ -986,19 +1559,6 @@ function _parse(chunk, encoding, cb) {
   }
 
   cb();
-}
-
-function series(arr, done) {
-  var i = 0;
-  (function next(err) {
-    if (err !== undefined || i >= arr.length) {
-      done(err);
-    } else {
-      setImmediate(function () {
-        return arr[i++](next);
-      });
-    }
-  })();
 }
 
 function _write(chunk, encoding, cb) {
@@ -1176,7 +1736,8 @@ var data = { PN532_PREAMBLE: 0,
   PN532_STARTCODE1: 0,
   PN532_STARTCODE2: 255,
   PN532_POSTAMBLE: 0,
-  PN532_HOSTTOPN532: 212,
+  PN532_HOST_TO_PN532: 212,
+  PN532_PN532_TO_HOST: 213,
   PN532_COMMAND_DIAGNOSE: 0,
   PN532_COMMAND_GETFIRMWAREVERSION: 2,
   PN532_COMMAND_GETGENERALSTATUS: 4,
@@ -1289,7 +1850,8 @@ var PN532_PREAMBLE = data.PN532_PREAMBLE;
 var PN532_STARTCODE1 = data.PN532_STARTCODE1;
 var PN532_STARTCODE2 = data.PN532_STARTCODE2;
 var PN532_POSTAMBLE = data.PN532_POSTAMBLE;
-var PN532_HOSTTOPN532 = data.PN532_HOSTTOPN532;
+var PN532_HOST_TO_PN532 = data.PN532_HOST_TO_PN532;
+var PN532_PN532_TO_HOST = data.PN532_PN532_TO_HOST;
 
 
 
@@ -1387,19 +1949,43 @@ var MIFARE_CMD_WRITE_4 = data.MIFARE_CMD_WRITE_4;
 
 var PN532_SAM_NORMAL_MODE = data.PN532_SAM_NORMAL_MODE;
 
-var cmd = function cmd(command) {
-  var i = void 0,
-      arr = [PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, command.length + 1, ~command.length & 0xff, PN532_HOSTTOPN532].concat(command);
+var check = function check(values) {
+  return 0x00 == 0xff & values.reduce(function (sum, value) {
+    return sum += value;
+  }, 0x00);
+};
 
-  var checksum = -arr[0];
-  for (i in arr) {
-    checksum += arr[i];
-  }arr.push(~checksum & 0xFF);
-  checksum = 0;
-  for (i in arr) {
-    checksum += arr[i];
-  }arr.push(PN532_POSTAMBLE);
-  return new Uint8ClampedArray(arr);
+var LCS_std = function LCS_std(byte, length, frame) {
+  return check(frame.slice(-2));
+};
+
+var CHECKSUM_std = function CHECKSUM_std(byte, length, frame) {
+  return check(frame.slice(5));
+};
+
+var BODY_std = function BODY_std(frame) {
+  var arr = [];
+  for (var i = 0; i < frame[3] - 1; i++) {
+    arr.push(undefined);
+  }return arr;
+};
+
+var info = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS_std, PN532_PN532_TO_HOST], BODY_std, [CHECKSUM_std, PN532_POSTAMBLE]];
+
+
+
+var err = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM_std, PN532_POSTAMBLE]];
+
+var ack = [new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE])];
+
+
+
+var command = function command(_command) {
+  return new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff & _command.length + 1, 0xff & ~_command.length, PN532_HOST_TO_PN532].concat(_command, [
+  // checksum
+  ~(0xff & _command.reduce(function (checksum, byte) {
+    return checksum += byte;
+  }, 1 /** include PN532_HOST_TO_PN532 1 byte to length */)), PN532_POSTAMBLE]));
 };
 
 var data$2 = { TNF_EMPTY: 0,
@@ -1427,15 +2013,14 @@ var data$2 = { TNF_EMPTY: 0,
   * @returns a string
   */
 var decode = function decode(data) {
-  var languageCodeLength = data[0] & 0x3F,
+    var languageCodeLength = data[0] & 0x3F,
+        // 6 LSBs
+    languageCode = data.slice(1, 1 + languageCodeLength); // assuming UTF-16BE
 
-  // 6 LSBs
-  languageCode = data.slice(1, 1 + languageCodeLength); // assuming UTF-16BE
+    // TODO need to deal with UTF in the future
+    // console.log("lang " + languageCode + (utf16 ? " utf16" : " utf8"))
 
-  // TODO need to deal with UTF in the future
-  // console.log("lang " + languageCode + (utf16 ? " utf16" : " utf8"))
-
-  return Buffer.from(data.slice(languageCodeLength + 1)).toString();
+    return Buffer.from(data.slice(languageCodeLength + 1)).toString();
 };
 
 /**
@@ -1444,14 +2029,14 @@ var decode = function decode(data) {
   * @returns an array of bytes
   */
 var encode = function encode(text, lang, encoding) {
-  // ISO/IANA language code, but we're not enforcing
-  if (!lang) {
-    lang = 'en';
-  }
+    // ISO/IANA language code, but we're not enforcing
+    if (!lang) {
+        lang = 'en';
+    }
 
-  var encoded = Buffer.from([lang.length].concat([].slice.call(Buffer.from(lang + text))));
+    var encoded = Buffer.from([lang.length].concat([].slice.call(Buffer.from(lang + text))));
 
-  return encoded;
+    return encoded;
 };
 
 // URI identifier codes from URI Record Type Definition NFCForum-TS-RTD_URI_1.0 2006-07-24
@@ -1462,19 +2047,27 @@ var protocols = ["", "http://www.", "https://www.", "http://", "https://", "tel:
   * @returns a string
   */
 var decode$1 = function decode(data) {
-  var prefix = protocols[data[0]];
-  if (!prefix) {
-    // 36 to 255 should be ""
-    prefix = "";
-  }
-  return prefix + Buffer.from(data.slice(1)).toString();
+    var prefix = protocols[data[0]];
+    if (!prefix) {
+        // 36 to 255 should be ""
+        prefix = "";
+    }
+    return prefix + Buffer.from(data.slice(1)).toString();
 };
 
 /**
-  * shorten a URI with standard prefix
-  *
-  * @returns an array of bytes
-  */
+ * Creates a JSON representation of a NDEF Record.
+ *
+ * @tnf 3-bit TNF (Type Name Format) - use one of the constants.TNF_* constants
+ * @type byte array, containing zero to 255 bytes, must not be null
+ * @id byte array, containing zero to 255 bytes, must not be null
+ * @payload byte array, containing zero to (2 ** 32 - 1) bytes, must not be null
+ *
+ * @returns JSON representation of a NDEF record
+ *
+ * @see Ndef.textRecord, Ndef.uriRecord and Ndef.mimeMediaRecord for examples
+ */
+
 var record = function record(tnf, type, id, payload, value) {
   if (!tnf) {
     tnf = data$2.TNF_EMPTY;
@@ -1534,11 +2127,14 @@ var textRecord = function textRecord(text, languageCode, id) {
 };
 
 /**
- * Helper that creates a NDEF record containing a URI.
- *
- * @uri String
- * @id byte[] (optional)
- */
+* Encodes an NDEF Message into bytes that can be written to a NFC tag.
+*
+* @ndefRecords an Array of NDEF Records
+*
+* @returns byte array
+*
+* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
+*/
 var encodeMessage = function encodeMessage(ndefRecords) {
   var encoded = [],
       tnf_byte = void 0,
@@ -1548,14 +2144,11 @@ var encodeMessage = function encodeMessage(ndefRecords) {
       i = void 0,
       mb = void 0,
       me = void 0,
-
-  // messageBegin, messageEnd
+      // messageBegin, messageEnd
   cf = false,
-
-  // chunkFlag TODO implement
+      // chunkFlag TODO implement
   sr = void 0,
-
-  // boolean shortRecord
+      // boolean shortRecord
   il = void 0; // boolean idLengthFieldIsPresent
 
   for (i = 0; i < ndefRecords.length; i++) {
@@ -1600,13 +2193,11 @@ var encodeMessage = function encodeMessage(ndefRecords) {
 };
 
 /**
-* Decodes an array bytes into an NDEF Message
+* Encode NDEF bit flags into a TNF Byte.
 *
-* @bytes an array bytes read from a NFC tag
+* @returns tnf byte
 *
-* @returns array of NDEF Records
-*
-* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
+*  See NFC Data Exchange Format (NDEF) Specification Section 3.2 RecordLayout
 */
 var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   if (!value) {
@@ -1637,48 +2228,12 @@ var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   return value;
 };
 
-// TODO test with byte[] and string
-
 blink();
 
 var encoded = encodeMessage([textRecord('2enhello world!')]);
 
-function shrinkToUint8(values) {
-  return values.reduce(function (sum, value) {
-    sum += value;
-
-    while (sum > 0xff) {
-      var remainder = sum & 0xff;
-      sum = sum >> 8;
-      sum += remainder - 1;
-    }
-    return sum;
-  }, 0x00);
-}
-
-function LCS_std(byte, length, frame) {
-  return 0x00 === shrinkToUint8(frame.slice(-2));
-}
-
-function CHECKSUM_std(byte, length, frame) {
-  return 0x00 === shrinkToUint8(frame.slice(5));
-}
-
-function BODY_std(frame) {
-  var arr = [];
-  for (var i = 0; i < frame[3] - 1; i++) {
-    arr.push(undefined);
-  }return arr;
-}
-
-var INFO_FRAME_std = [[0, 0, 0xff, undefined, LCS_std, 0xd5], BODY_std, [CHECKSUM_std, 0x00]];
-
-var ERR_FRAME = [[0, 0, 0xff, 0x01, 0xff, undefined, CHECKSUM_std, 0x00]];
-
-var ACK_FRAME = [new Uint8ClampedArray([0, 0, 255, 0, 255, 0])];
-
-var wakeup = cmd([PN532_WAKEUP]);
-var sam = cmd([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
+var wakeup = command([PN532_WAKEUP]);
+var sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
 
 function setup(done) {
   var _this = this;
@@ -1721,13 +2276,13 @@ var KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
       block = 4;
 
   bus.deferred(function (done) {
-    var LIST = cmd([PN532_COMMAND_INLISTPASSIVETARGET, 1, 0]);
+    var LIST = command([PN532_COMMAND_INLISTPASSIVETARGET, 1, 0]);
 
-    bus.rx(ACK_FRAME, function (ack) {
+    bus.rx(ack, function () {
       console.log('ACK');
     });
 
-    bus.rx(INFO_FRAME_std, function (frame) {
+    bus.rx(info, function (frame) {
       var body = frame.slice(7, 5 + frame[3]),
           uidLength = body[5],
           _uid = body.slice(6, 6 + uidLength);
@@ -1751,13 +2306,13 @@ var KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
   });
 
   bus.deferred(function (done, fail) {
-    var AUTH = cmd([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_AUTH_A, block].concat(KEY).concat(uid));
+    var AUTH = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_AUTH_A, block].concat(KEY).concat(uid));
 
-    bus.rx(ACK_FRAME, function (ack) {});
+    bus.rx(ack, function (ack$$1) {});
 
-    bus.rx(ERR_FRAME, fail);
+    bus.rx(err, fail);
 
-    bus.rx(INFO_FRAME_std, function (frame) {
+    bus.rx(info, function (frame) {
       console.log('AUTH SUCCEED' /*, {
                                  code: frame[6],
                                  body: frame.slice(7, 5 + frame[3])
@@ -1770,13 +2325,13 @@ var KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
   });
 
   bus.deferred(function (done, fail) {
-    var WRITE = cmd([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_WRITE_4, block].concat(encoded));
+    var WRITE = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_WRITE_4, block].concat(encoded));
 
-    bus.rx(ACK_FRAME, function (ack) {});
+    bus.rx(ack, function (ack$$1) {});
 
-    bus.rx(ERR_FRAME, fail);
+    bus.rx(err, fail);
 
-    bus.rx(INFO_FRAME_std, function (block) {
+    bus.rx(info, function (block) {
       console.log('WRITE SUCCEED');
 
       done();
@@ -1786,14 +2341,13 @@ var KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
   });
 
   bus.deferred(function (done, fail) {
-    console.log('READ');
-    var READ = cmd([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_READ, block]);
+    var READ = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_READ, block]);
 
-    bus.rx(ACK_FRAME, function (ack) {});
+    bus.rx(ack, function (ack$$1) {});
 
-    //bus.rx(ERR_FRAME, fail)
+    bus.rx(err, fail);
 
-    bus.rx(INFO_FRAME_std, function (block) {
+    bus.rx(info, function (block) {
       console.log("RED", block);
 
       done();
@@ -1804,7 +2358,7 @@ var KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
 
   bus.deferred(function (done) {
     _setTimeout(function () {
-      console.log(_process.memory());
+      console.log(_process.memory().free);
       done();
       poll();
     }, 1000);

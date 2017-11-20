@@ -1,13 +1,18 @@
 {
   "name": "espruino-dev",
-  "version": "0.0.1-alpha.2",
+  "version": "0.0.1-alpha.3",
   "description": "",
   "main": "bundle/index.esp.min.js",
-  "dependencies": {},
+  "dependencies": {
+    "esp-ndef": "^0.1.4-beta.4",
+    "file-marker": "0.0.1-alpha.2"
+  },
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-helpers": "^6.24.1",
     "babel-loader": "^7.1.2",
+    "babel-plugin-add-module-exports": "^0.2.1",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.26.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "json-loader": "^0.5.7",
