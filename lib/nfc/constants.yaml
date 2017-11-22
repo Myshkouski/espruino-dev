@@ -112,21 +112,6 @@ PN532_SAM_VIRTUAL_CARD: 0x02
 PN532_SAM_WIRED_CARD: 0x03
 PN532_SAM_DUAL_CARD: 0x04
 
-# AFI                   AFI                   Meaning –                                     Examples / Note
-# Most Signif. Nibble   Least Signif. Nibble  PICCs respond from
-# ‘0’                   ‘0’                   All families and sub-families                 No application preselection
-# ‘X’                   ‘0’                   All sub-families of family X                  Wide application preselection
-# ‘X’                   ‘Y’                   Only the Yth sub-family of family X
-# ‘0’                   ‘Y’                   Proprietary sub-family Y only
-# ‘1’                   ‘0’, ‘Y’              Transport Mass transit, Bus, Airline,...
-# ‘2’                   ‘0’, ‘Y’              Financial IEP, Banking, Retail,...
-# ‘3’                   ‘0’, ‘Y’              Identification Access Control,...
-# ‘4’                   ‘0’, ‘Y’              Telecommunication Public Telephony, GSM,...
-# ‘5’                   ‘0’, ‘Y’              Medical
-# ‘6’                   ‘0’, ‘Y’              Multimedia Internet services....
-# ‘7’                   ‘0’, ‘Y’              Gaming
-# ‘8’                   ‘0’, ‘Y’              Data Storage Portable Files, ...
-
 PN532_BRTY_ISO14443A: 0x00
 PN532_BRTY_ISO14443B: 0x03
 PN532_BRTY_212KBPS: 0x01
@@ -135,3 +120,19 @@ PN532_BRTY_JEWEL: 0x04
 NFC_WAIT_TIME: 30
 NFC_CMD_BUF_LEN: 64
 NFC_FRAME_ID_INDEX: 6
+
+# AFI                   AFI                   Meaning –                                     Examples / Note
+# Most Signif. Nibble   Least Signif. Nibble  PICCs respond from
+#
+# ‘0’                   ‘0’                   All families and sub-families                 No application preselection
+# ‘X’                   ‘0’                   All sub-families of family X                  Wide application preselection
+# ‘X’                   ‘Y’                   Only the Yth sub-family of family X
+# ‘0’                   ‘Y’                   Proprietary sub-family Y only
+# ‘1’                   ‘0’, ‘Y’              Transport                                     Mass transit, Bus, Airline,...
+# ‘2’                   ‘0’, ‘Y’              Financial                                     IEP, Banking, Retail,...
+# ‘3’                   ‘0’, ‘Y’              Identification                                Access Control,...
+# ‘4’                   ‘0’, ‘Y’              Telecommunication                             Public Telephony, GSM,...
+# ‘5’                   ‘0’, ‘Y’              Medical
+# ‘6’                   ‘0’, ‘Y’              Multimedia                                    Internet services....
+# ‘7’                   ‘0’, ‘Y’              Gaming
+# ‘8’                   ‘0’, ‘Y’              Data Storage                                  Portable Files, ...
