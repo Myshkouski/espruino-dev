@@ -1,7 +1,7 @@
 import Bus from 'bus'
 import Schedule from 'schedule'
 import blink from 'blink'
-import { command, ack, nack, info, xinfo, err } from 'nfc'
+import { command, ACK, NACK, INFO, XINFO } from 'nfc'
 import {
   PN532_COMMAND_SAMCONFIGURATION,
   PN532_SAM_NORMAL_MODE,
@@ -162,11 +162,11 @@ const key = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
       0
     ])
 
-    bus.rx(ack, () => {
+    bus.rx(ACK, () => {
       console.log('ACK')
     })
 
-    bus.rx(info, frame => {
+    bus.rx(INFO, frame => {
       const body = frame.slice(7, 5 + frame[3]),
             uidLength = body[5],
             _uid = body.slice(6, 6 + uidLength)

@@ -2,34 +2,36 @@ import {
   SUPER_CHAIN_PROTO_PROP,
   SUPER_CHAIN_APPLY_PROP,
   PROTOTYPE_IS_EXTENDED_PROP
-} from './vars'
+} from './props'
 
 const _copyChain = (Extended, ProtoChain, chainPropName, ignoreExtended) => {
   //if chain on [Extended] has not been created yet
-  if(!Extended.prototype[chainPropName])
-    defProp(Extended.prototype, chainPropName, { value: [] })
+  if(!Extended.prototype[chainPropName]) {
+    Object.defineProperty(Extended.prototype, chainPropName, { value: [] })
+  }
 
   ProtoChain.forEach(Proto => {
     //console.log(!!Proto.prototype['__extended__'], Proto)
     //if [Proto] has been '__extended__' and has same-named proto chain, copy the Proto chain to Extended chain
     const isExtended = !!Proto.prototype[PROTOTYPE_IS_EXTENDED_PROP],
-      hasSameChain = !!Proto.prototype[chainPropName]
+          hasSameChain = !!Proto.prototype[chainPropName]
 
-    const alreadyInChain = Extended.prototype[chainPropName].some(P => (P === Proto)),
-      shouldBePushed = (!isExtended || !ignoreExtended) && !alreadyInChain,
-      shouldCopyChain = isExtended && hasSameChain
+    const alreadyInChain = Extended.prototype[chainPropName].some(P => P === Proto),
+          shouldBePushed = (!isExtended || !ignoreExtended) && !alreadyInChain,
+          shouldCopyChain = isExtended && hasSameChain
 
     if(shouldCopyChain)
       Proto.prototype[chainPropName].forEach(Proto => {
         //avoid pushing twice
-        if(!Extended.prototype[chainPropName].some(P => (P === Proto)) ) {
+        if(!Extended.prototype[chainPropName].some(P => P === Proto) ) {
           //console.log('pushed', Proto)
           Extended.prototype[chainPropName].push(Proto)
         }
       })
 
-    if(shouldBePushed)
+    if(shouldBePushed) {
       Extended.prototype[chainPropName].push(Proto)
+    }
   })
 
   //console.log(Extended.prototype[chainPropName])
@@ -61,7 +63,7 @@ const _extend = (options = {}) => {
   for(let i in options.static) {
     for(let prop in options.static[i]) {
       if('prototype' != prop) {
-        defProp(Extended, prop, {
+        Object.defineProperty(Extended, prop, {
           value: proto[prop],
           enumerable: true,
           writable: true
@@ -70,9 +72,9 @@ const _extend = (options = {}) => {
     }
   }
 
-  defProp(Extended, 'prototype', { value: {} })
-  defProp(Extended.prototype, 'constructor', { value: Child })
-  defProp(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true })
+  Object.defineProperty(Extended, 'prototype', { value: {} })
+  Object.defineProperty(Extended.prototype, 'constructor', { value: Child })
+  Object.defineProperty(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true })
 
   for(let i in options.super) {
     function Proto() {}
@@ -81,7 +83,7 @@ const _extend = (options = {}) => {
 
     for(let prop in proto) {
       if(['constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP].indexOf(prop) < 0) {
-        defProp(Extended.prototype, prop, {
+        Object.defineProperty(Extended.prototype, prop, {
           value: proto[prop],
           enumerable: true,
           writable: true
