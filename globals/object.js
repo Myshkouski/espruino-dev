@@ -11,6 +11,4 @@ Object.assign = (target, ...args) => {
   return target
 }
 
-//Object.freeze = obj => obj
-
 export default Object
