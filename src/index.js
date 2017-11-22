@@ -1,6 +1,6 @@
 import Bus from 'bus'
 import blink from 'blink'
-import { command, ack, nack, info, xinfo, err } from 'nfc'
+import { command, ACK, NACK, INFO, XINFO } from 'nfc'
 import {
   PN532_COMMAND_SAMCONFIGURATION,
   PN532_SAM_NORMAL_MODE,
@@ -76,11 +76,11 @@ let afi = 0x00
       0
     ])
 
-    bus.rx(ack, () => {
+    bus.rx(ACK, () => {
       console.log('ACK')
     })
 
-    bus.rx(info, frame => {
+    bus.rx(INFO, frame => {
       const body = frame.slice(7, 5 + frame[3]),
             uidLength = body[5],
             _uid = body.slice(6, 6 + uidLength)
@@ -111,11 +111,11 @@ let afi = 0x00
       block
     ].concat(KEY).concat(uid))
 
-    bus.rx(ack, ack => {})
+    bus.rx(ACK, ACK => {})
 
-    bus.rx(err, fail)
+    bus.rx(ERR, fail)
 
-    bus.rx(info, frame => {
+    bus.rx(INFO, frame => {
       console.log('AUTH SUCCEED'/*, {
         code: frame[6],
         body: frame.slice(7, 5 + frame[3])
@@ -135,11 +135,11 @@ let afi = 0x00
       block
     ].concat(encoded))
 
-    bus.rx(ack, ack => {})
+    bus.rx(ACK, ACK => {})
 
-    bus.rx(err, fail)
+    bus.rx(ERR, fail)
 
-    bus.rx(info, block => {
+    bus.rx(INFO, block => {
       console.log('WRITE SUCCEED')
 
       done()
@@ -156,11 +156,11 @@ let afi = 0x00
       block
     ])
 
-    bus.rx(ack, ack => {})
+    bus.rx(ACK, ACK => {})
 
-    bus.rx(err, fail)
+    bus.rx(ERR, fail)
 
-    bus.rx(info, block => {
+    bus.rx(INFO, block => {
       console.log("RED", block)
 
       done()
