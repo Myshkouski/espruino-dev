@@ -51,15 +51,15 @@ PN532_I2C_BUSY: 0x00
 PN532_I2C_READY: 0x01
 PN532_I2C_READYTIMEOUT: 20
 
-MIFARE_CMD_AUTH_A: 0x60
-MIFARE_CMD_AUTH_B: 0x61
-MIFARE_CMD_READ: 0x30
-MIFARE_CMD_WRITE_4: 0xA2
-MIFARE_CMD_WRITE_16: 0xA0
-MIFARE_CMD_TRANSFER: 0xB0
-MIFARE_CMD_DECREMENT: 0xC0
-MIFARE_CMD_INCREMENT: 0xC1
-MIFARE_CMD_RESTORE: 0xC2
+MIFARE_COMMAND_AUTH_A: 0x60
+MIFARE_COMMAND_AUTH_B: 0x61
+MIFARE_COMMAND_READ: 0x30
+MIFARE_COMMAND_WRITE_4: 0xA2
+MIFARE_COMMAND_WRITE_16: 0xA0
+MIFARE_COMMAND_TRANSFER: 0xB0
+MIFARE_COMMAND_DECREMENT: 0xC0
+MIFARE_COMMAND_INCREMENT: 0xC1
+MIFARE_COMMAND_RESTORE: 0xC2
 
 NDEF_URIPREFIX_NONE: 0x00
 NDEF_URIPREFIX_HTTP_WWWDOT: 0x01
@@ -118,21 +118,21 @@ PN532_BRTY_424KBPS: 0x02
 PN532_BRTY_JEWEL: 0x04
 
 NFC_WAIT_TIME: 30
-NFC_CMD_BUF_LEN: 64
+NFC_COMMAND_BUF_LEN: 64
 NFC_FRAME_ID_INDEX: 6
 
-# AFI                   AFI                   Meaning –                                     Examples / Note
+# AFI                   AFI                   Meaning –                             Examples / Note
 # Most Signif. Nibble   Least Signif. Nibble  PICCs respond from
 #
-# ‘0’                   ‘0’                   All families and sub-families                 No application preselection
-# ‘X’                   ‘0’                   All sub-families of family X                  Wide application preselection
+# ‘0’                   ‘0’                   All families and sub-families         No application preselection
+# ‘X’                   ‘0’                   All sub-families of family X          Wide application preselection
 # ‘X’                   ‘Y’                   Only the Yth sub-family of family X
 # ‘0’                   ‘Y’                   Proprietary sub-family Y only
-# ‘1’                   ‘0’, ‘Y’              Transport                                     Mass transit, Bus, Airline,...
-# ‘2’                   ‘0’, ‘Y’              Financial                                     IEP, Banking, Retail,...
-# ‘3’                   ‘0’, ‘Y’              Identification                                Access Control,...
-# ‘4’                   ‘0’, ‘Y’              Telecommunication                             Public Telephony, GSM,...
+# ‘1’                   ‘0’, ‘Y’              Transport                             Mass transit, Bus, Airline,...
+# ‘2’                   ‘0’, ‘Y’              Financial                             IEP, Banking, Retail,...
+# ‘3’                   ‘0’, ‘Y’              Identification                        Access Control,...
+# ‘4’                   ‘0’, ‘Y’              Telecommunication                     Public Telephony, GSM,...
 # ‘5’                   ‘0’, ‘Y’              Medical
-# ‘6’                   ‘0’, ‘Y’              Multimedia                                    Internet services....
+# ‘6’                   ‘0’, ‘Y’              Multimedia                            Internet services....
 # ‘7’                   ‘0’, ‘Y’              Gaming
-# ‘8’                   ‘0’, ‘Y’              Data Storage                                  Portable Files, ...
+# ‘8’                   ‘0’, ‘Y’              Data Storage                          Portable Files, ...
