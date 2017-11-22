@@ -1,86 +1,15 @@
 'use strict';
 
-var loop = [
-// nextTick
-{ queue: [], immediatePush: true, tick: false },
-// immediate
-{ queue: [], immediatePush: true, tick: false },
-// timeout
-{ queue: [], immediatePush: false, tick: false }];
-
-var tick = false;
-
-var asyncFlush = function asyncFlush() {
-  for (var stage in loop) {
-    if (loop[stage].queue.length) {
-      if (loop[stage].immediatePush) {
-        for (var exec = 0; exec < loop[stage].queue.length; exec++) {
-          loop[stage].queue[exec]();
-        }
-        loop[stage].queue.splice(0);
-      } else {
-        var queue = loop[stage].queue.splice(0);
-        for (var _exec = 0; _exec < queue.length; _exec++) {
-          queue[_exec]();
-        }
-      }
-    }
-
-    loop[stage].tick = tick = false;
-  }
-};
-
-var asyncCall = function asyncCall(stage) {
-  return function (cb) {
-    loop[stage].queue.push(cb);
-
-    if (!tick && !loop[stage].tick) {
-      loop[stage].tick = tick = true;
-
-      setTimeout(asyncFlush);
-    }
-  };
-};
-
-var nextTick = asyncCall( /* .nextTick */0);
-
-var setImmediate = asyncCall( /* .immediate */1);
-
-var timeoutCall = asyncCall( /* .timeeout */2);
-
-var _setTimeout = function _setTimeout(cb, timeout) {
-  // let index = 0
-  // while(timers[index]) {
-  //   index++
-  // }
-  // timers[index] = setTimeout(() => {
-  //   if(timers[index]) {
-  //     delete timers[index]
-  //     timeoutCall(cb)
-  //   }
-  // }, timeout)
-  //
-  // return index
-
-  return setTimeout(function () {
-    timeoutCall(cb);
-  }, timeout);
-};
-
-var _process = typeof process !== 'undefined' ? process : {};
-
-_process.nextTick = typeof _process.nextTick !== 'undefined' ? _process.nextTick : nextTick;
-
-var timers$1 = {};
+var timers = {};
 
 function time(label) {
-  timers$1[label] = Date.now();
+  timers[label] = Date.now();
 }
 
 function timeEnd(label) {
-  if (label in timers$1) {
-    console.log(label + ': ' + (Date.now() - timers$1[label]).toFixed(3) + 'ms');
-    delete timers$1[label];
+  if (label in timers) {
+    console.log(label + ': ' + (Date.now() - timers[label]).toFixed(3) + 'ms');
+    delete timers[label];
   }
 }
 
@@ -92,150 +21,6 @@ if (typeof console.time !== 'function') {
 if (typeof console.error !== 'function') {
   console.error = console.log;
 }
-
-Object.assign = function (target) {
-  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    args[_key - 1] = arguments[_key];
-  }
-
-  for (var _iterator = args, _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
-    var _ref;
-
-    if (_isArray) {
-      if (_i >= _iterator.length) break;
-      _ref = _iterator[_i++];
-    } else {
-      _i = _iterator.next();
-      if (_i.done) break;
-      _ref = _i.value;
-    }
-
-    var obj = _ref;
-
-    if (obj instanceof Object) for (var key in obj) {
-      target[key] = obj[key];
-    }
-  }
-
-  return target;
-};
-
-var defProp = function defProp(obj, prop, desc) {
-  try {
-    Object.defineProperty(obj, prop, desc);
-    return obj;
-  } catch (e) {
-    if (desc.get) obj.value = desc.get();else if (desc.value) obj[prop] = desc.value;
-
-    return obj;
-  }
-};
-
-var _named = (function (name, f) {
-  defProp(f, 'name', { value: name });
-  //defProp(f, 'toString', { value: () => '[Function' + (f.name !== undefined ? ': ' + f.name : '') + ']' })
-
-  return f;
-});
-
-var SUPER_CHAIN_PROTO_PROP = '_super';
-var SUPER_CHAIN_APPLY_PROP = '_apply';
-var PROTOTYPE_IS_EXTENDED_PROP = '_isExtended';
-
-var _copyChain = function _copyChain(Extended, ProtoChain, chainPropName, ignoreExtended) {
-  //if chain on [Extended] has not been created yet
-  if (!Extended.prototype[chainPropName]) defProp(Extended.prototype, chainPropName, { value: [] });
-
-  ProtoChain.forEach(function (Proto) {
-    //console.log(!!Proto.prototype['__extended__'], Proto)
-    //if [Proto] has been '__extended__' and has same-named proto chain, copy the Proto chain to Extended chain
-    var isExtended = !!Proto.prototype[PROTOTYPE_IS_EXTENDED_PROP],
-        hasSameChain = !!Proto.prototype[chainPropName];
-
-    var alreadyInChain = Extended.prototype[chainPropName].some(function (P) {
-      return P === Proto;
-    }),
-        shouldBePushed = (!isExtended || !ignoreExtended) && !alreadyInChain,
-        shouldCopyChain = isExtended && hasSameChain;
-
-    if (shouldCopyChain) Proto.prototype[chainPropName].forEach(function (Proto) {
-      //avoid pushing twice
-      if (!Extended.prototype[chainPropName].some(function (P) {
-        return P === Proto;
-      })) {
-        //console.log('pushed', Proto)
-        Extended.prototype[chainPropName].push(Proto);
-      }
-    });
-
-    if (shouldBePushed) Extended.prototype[chainPropName].push(Proto);
-  });
-
-  //console.log(Extended.prototype[chainPropName])
-};
-
-var _extend = function _extend() {
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-  if (!options.apply) options.apply = [];
-  if (!options.super) options.super = [];
-  if (!options.static) options.static = [];
-
-  var Child = options.super[0];
-
-  if (!options.name) options.name = Child.name;
-
-  function Extended() {
-    var _this = this,
-        _arguments = arguments;
-
-    Extended.prototype[SUPER_CHAIN_APPLY_PROP].forEach(function (Super) {
-      if (Super !== Extended) {
-        Super.apply(_this, _arguments);
-      }
-    });
-  }
-
-  _named(options.name, Extended);
-
-  for (var i in options.static) {
-    for (var prop in options.static[i]) {
-      if ('prototype' != prop) {
-        defProp(Extended, prop, {
-          value: proto[prop],
-          enumerable: true,
-          writable: true
-        });
-      }
-    }
-  }
-
-  defProp(Extended, 'prototype', { value: {} });
-  defProp(Extended.prototype, 'constructor', { value: Child });
-  defProp(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true });
-
-  for (var _i in options.super) {
-    var Proto = function Proto() {};
-
-    Proto.prototype = options.super[_i].prototype;
-    var _proto = new Proto();
-
-    for (var _prop in _proto) {
-      if (['constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP].indexOf(_prop) < 0) {
-        defProp(Extended.prototype, _prop, {
-          value: _proto[_prop],
-          enumerable: true,
-          writable: true
-        });
-      }
-    }
-  }
-
-  _copyChain(Extended, options.super, SUPER_CHAIN_PROTO_PROP, false);
-  _copyChain(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
-
-  return Extended;
-};
 
 Array.prototype.concat = function () {
   var concatenated = [];
@@ -434,13 +219,11 @@ Array.prototype.concat = function () {
 //   }
 // }
 //
-// Promise.all = function(promises){
-//   var Class = this
-//
+// Promise.all = function(promises) {
 //   if (!(promises instanceof Array))
 //     throw new TypeError('You must pass an array to Promise.all().')
 //
-//   return new Class((resolve, reject) => {
+//   return new Promise((resolve, reject) => {
 //     var results = []
 //     var remaining = 0
 //
@@ -453,8 +236,7 @@ Array.prototype.concat = function () {
 //       }
 //     }
 //
-//     for (var i = 0, promise i < promises.length i++)
-//     {
+//     for (var i = 0, promise; i < promises.length; i++) {
 //       promise = promises[i]
 //
 //       if (promise && typeof promise.then === 'function')
@@ -467,380 +249,19 @@ Array.prototype.concat = function () {
 //       resolve(results)
 //   })
 // }
-//
-// Promise.race = function(promises){
-//   var Class = this
-//
-//   if (!(promises instanceof Array))
-//     throw new TypeError('You must pass an array to Promise.race().')
-//
-//   return new Class((resolve, reject) => {
-//     for (var i = 0, promise i < promises.length i++)
-//     {
-//       promise = promises[i]
-//
-//       if (promise && typeof promise.then === 'function')
-//         promise.then(resolve, reject)
-//       else
-//         resolve(promise)
-//     }
-//   })
-// }
-//
-// Promise.resolve = function(value) {
-//   var Class = this
-//
-//   if (value && typeof value === 'object' && value.constructor === Class)
-//     return value
-//
-//   return new Class(function(resolve){
-//     resolve(value)
-//   })
-// }
-//
-// Promise.reject = function(reason){
-//   var Class = this
-//
-//   return new Class(function(resolve, reject){
-//     reject(reason)
-//   })
-// }
-//
-if (!Promise.race) {
-  Promise.race = function (promises) {
-    if (!(promises instanceof Array)) throw new TypeError('You must pass an array to Promise.race().');
 
-    return new Promise(function (resolve, reject) {
-      for (var i = 0, promise; i < promises.length; i++) {
-        promise = promises[i];
+Promise.race = function (promises) {
+  var Class = this;
 
-        promise && typeof promise.then === 'function' ? promise.then(resolve, reject) : resolve(promise);
-      }
-    });
-  };
-}
+  if (!(promises instanceof Array)) throw new TypeError('You must pass an array to Promise.race().');
 
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
+  return new Class(function (resolve, reject) {
+    for (var i = 0, promise; i < promises.length; i++) {
+      promise = promises[i];
 
-function EventEmitter() {
-  this._events = this._events || {};
-  this._maxListeners = this._maxListeners || undefined;
-}
-var events = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-EventEmitter.defaultMaxListeners = 10;
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!isNumber(n) || n < 0 || isNaN(n))
-    throw TypeError('n must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-EventEmitter.prototype.emit = function(type) {
-  var er, handler, len, args, i, listeners;
-
-  if (!this._events)
-    this._events = {};
-
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events.error ||
-        (isObject(this._events.error) && !this._events.error.length)) {
-      er = arguments[1];
-      if (er instanceof Error) {
-        throw er; // Unhandled 'error' event
-      } else {
-        // At least give some kind of context to the user
-        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
-        err.context = er;
-        throw err;
-      }
+      if (promise && typeof promise.then === 'function') promise.then(resolve, reject);else resolve(promise);
     }
-  }
-
-  handler = this._events[type];
-
-  if (isUndefined(handler))
-    return false;
-
-  if (isFunction(handler)) {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        args = Array.prototype.slice.call(arguments, 1);
-        handler.apply(this, args);
-    }
-  } else if (isObject(handler)) {
-    args = Array.prototype.slice.call(arguments, 1);
-    listeners = handler.slice();
-    len = listeners.length;
-    for (i = 0; i < len; i++)
-      listeners[i].apply(this, args);
-  }
-
-  return true;
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  var m;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events)
-    this._events = {};
-
-  // To avoid recursion in the case that type === "newListener"! Before
-  // adding it to the listeners, first emit "newListener".
-  if (this._events.newListener)
-    this.emit('newListener', type,
-              isFunction(listener.listener) ?
-              listener.listener : listener);
-
-  if (!this._events[type])
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  else if (isObject(this._events[type]))
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  else
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  // Check for listener leak
-  if (isObject(this._events[type]) && !this._events[type].warned) {
-    if (!isUndefined(this._maxListeners)) {
-      m = this._maxListeners;
-    } else {
-      m = EventEmitter.defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      if (typeof console.trace === 'function') {
-        // not supported in IE 10
-        console.trace();
-      }
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  var fired = false;
-
-  function g() {
-    this.removeListener(type, g);
-
-    if (!fired) {
-      fired = true;
-      listener.apply(this, arguments);
-    }
-  }
-
-  g.listener = listener;
-  this.on(type, g);
-
-  return this;
-};
-
-// emits a 'removeListener' event iff the listener was removed
-EventEmitter.prototype.removeListener = function(type, listener) {
-  var list, position, length, i;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events || !this._events[type])
-    return this;
-
-  list = this._events[type];
-  length = list.length;
-  position = -1;
-
-  if (list === listener ||
-      (isFunction(list.listener) && list.listener === listener)) {
-    delete this._events[type];
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-
-  } else if (isObject(list)) {
-    for (i = length; i-- > 0;) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener)) {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0)
-      return this;
-
-    if (list.length === 1) {
-      list.length = 0;
-      delete this._events[type];
-    } else {
-      list.splice(position, 1);
-    }
-
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  var key, listeners;
-
-  if (!this._events)
-    return this;
-
-  // not listening for removeListener, no need to emit
-  if (!this._events.removeListener) {
-    if (arguments.length === 0)
-      this._events = {};
-    else if (this._events[type])
-      delete this._events[type];
-    return this;
-  }
-
-  // emit removeListener for all listeners on all events
-  if (arguments.length === 0) {
-    for (key in this._events) {
-      if (key === 'removeListener') continue;
-      this.removeAllListeners(key);
-    }
-    this.removeAllListeners('removeListener');
-    this._events = {};
-    return this;
-  }
-
-  listeners = this._events[type];
-
-  if (isFunction(listeners)) {
-    this.removeListener(type, listeners);
-  } else if (listeners) {
-    // LIFO order
-    while (listeners.length)
-      this.removeListener(type, listeners[listeners.length - 1]);
-  }
-  delete this._events[type];
-
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  var ret;
-  if (!this._events || !this._events[type])
-    ret = [];
-  else if (isFunction(this._events[type]))
-    ret = [this._events[type]];
-  else
-    ret = this._events[type].slice();
-  return ret;
-};
-
-EventEmitter.prototype.listenerCount = function(type) {
-  if (this._events) {
-    var evlistener = this._events[type];
-
-    if (isFunction(evlistener))
-      return 1;
-    else if (evlistener)
-      return evlistener.length;
-  }
-  return 0;
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  return emitter.listenerCount(type);
-};
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-
-function _Stream() {
-	var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-	this.options = {
-		highWaterMark: options.highWaterMark || 128
-	};
-}
-
-var Stream = _extend({
-	name: 'Stream',
-	super: [events],
-	apply: [events, _named('Stream', _Stream)]
-});
-
-Stream.prototype.emit = function (event, err) {
-	if (event === 'error' && !(this['#onerror'] || this._events['error'])) throw new Error(err);
-
-	return events.prototype.emit.apply(this, arguments);
+  });
 };
 
 function Buffer() {
@@ -887,6 +308,21 @@ Buffer.concat = function concat() {
 	});
 
 	return buffer;
+};
+
+Object.assign = function (target) {
+  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    args[_key - 1] = arguments[_key];
+  }
+
+  for (var i in args) {
+    var obj = args[i];
+    if (obj instanceof Object) for (var key in obj) {
+      target[key] = obj[key];
+    }
+  }
+
+  return target;
 };
 
 function BufferState() {
@@ -1010,414 +446,53 @@ BufferState.prototype = {
   }
 };
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var loop = [
+// nextTick
+{ queue: [], immediatePush: true, tick: false },
+// immediate
+{ queue: [], immediatePush: true, tick: false },
+// timeout
+{ queue: [], immediatePush: false, tick: false }];
 
-var encodings = {
-	BINARY: 'binary',
-	UTF8: 'utf8'
+var tick = false;
+
+var asyncFlush = function asyncFlush() {
+  for (var stage in loop) {
+    if (loop[stage].queue.length) {
+      if (loop[stage].immediatePush) {
+        for (var exec = 0; exec < loop[stage].queue.length; exec++) {
+          loop[stage].queue[exec]();
+        }
+        loop[stage].queue.splice(0);
+      } else {
+        var queue = loop[stage].queue.splice(0);
+        for (var _exec = 0; _exec < queue.length; _exec++) {
+          queue[_exec]();
+        }
+      }
+    }
+
+    loop[stage].tick = tick = false;
+  }
 };
 
-function toString(binary) {
-	var str = '';
-	for (var i = 0; i < binary.length; i++) {
-		str += String.fromCharCode(binary[i]);
-	}return str;
-}
+var asyncCall = function asyncCall(stage) {
+  return function (cb) {
+    loop[stage].queue.push(cb);
 
-// function _broadcast() {
-// 	let chunk = this.read()
-// 	if(chunk && chunk.length) {
-// 		process.nextTick(() => {
-// 			if(this._readableState.defaultEncoding == encodings.UTF8) {
-// 				chunk = toString(chunk)
-// 			}
-// 			this.emit('data', chunk, this._readableState.defaultEncoding)
-// 		})
-// 	}
-// }
+    if (!tick && !loop[stage].tick) {
+      loop[stage].tick = tick = true;
 
-function _flow() {
-	var _this = this;
-
-	if (this._readableState.flowing) {
-		// _broadcast.call(this)
-		var chunk = this.read();
-		if (chunk && chunk.length) {
-			_process.nextTick(function () {
-				if (_this._readableState.defaultEncoding == encodings.UTF8) {
-					chunk = toString(chunk);
-				}
-				_this.emit('data', chunk, _this._readableState.defaultEncoding);
-			});
-		}
-	}
-}
-
-function _end() {
-	this._readableState.flowing = null;
-	this._readableState.ended = true;
-}
-
-function _Readable() {
-	var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-	this._readableState = new BufferState({
-		flowing: null,
-		ended: false,
-		defaultEncoding: encodings.BINARY
-	});
-
-	this.pipes = [];
-
-	this._read = options.read.bind(this);
-
-	if (!this._read) throw new TypeError('_read() is not implemented');
-	if (!this._read instanceof Function) throw new TypeError('\'options.read\' should be a function, passed', _typeof(options.read));
-}
-
-_Readable.prototype = {
-	pause: function pause() {
-		//console.log('pause()')
-		if (this._readableState.flowing !== false) {
-			this._readableState.flowing = false;
-			this.emit('pause');
-		}
-
-		return this;
-	},
-	resume: function resume() {
-		if (!this._readableState.flowing) {
-			this._readableState.flowing = true;
-			this.emit('resume');
-			_flow.call(this);
-		}
-
-		return this;
-	},
-	read: function read(length) {
-		if (length < 0) {
-			throw new Error('"length" must be more than 0');
-		}
-
-		if (!this._readableState.ended) {
-			if (length === undefined) {
-				if (this._readableState.length < this.options.highWaterMark) {
-					this._read(this.options.highWaterMark - this._readableState.length);
-				}
-			} else if (length > this._readableState.length) {
-				this._read(length - this._readableState.length);
-			}
-		}
-
-		if (this._readableState.ended) {
-			if (this._readableState.length) {
-				return this._readableState.buffer();
-			}
-
-			return null;
-		}
-
-		if (length !== undefined && this._readableState.length < length) {
-			return null;
-		}
-
-		return this._readableState.buffer(length);
-	},
-	push: function push(chunk) {
-		//console.log('push(' + chunk + ')')
-		if (chunk === null) {
-			_end.call(this);
-			return false;
-		}
-
-		var overflow = this._readableState.push(chunk) > this.options.highWaterMark;
-
-		if (!overflow) _flow.call(this);
-
-		return !overflow;
-	},
-	pipe: function pipe(writable) {
-		var _this2 = this;
-
-		if (!this.pipes.some(function (pipe) {
-			pipe.writable === writable;
-		})) {
-			var listener = function listener(data, pipe) {
-				if (!writable.write(data)) {
-					pipe.stopped = true;
-					_this2.pause();
-
-					writable.once('drain', function () {
-						_this2.resume();
-					});
-				}
-			};
-
-			var pipe = { writable: writable, listener: listener, stopped: undefined };
-
-			this.on('data', function (data) {
-				listener(data, pipe);
-			}).pipes.push(pipe);
-
-			if (writable instanceof Stream) writable.emit('pipe');
-		}
-
-		return writable;
-	},
-	unpipe: function unpipe(writable) {
-		if (writable) {
-			var pipe = this.pipes.find(function (pipe) {
-				pipe.writable === writable;
-			});
-
-			if (pipe) this.removeListener('data', pipe.listener);
-		} else {
-			for (var index in this.pipes) {
-				this.removeListener(this.pipes[index].listener);
-			}this.pipes.splice(0);
-		}
-	},
-	on: function on(event, listener) {
-		if (event == 'data') this.resume();
-
-		return Stream.prototype.on.apply(this, arguments);
-	},
-	removeListener: function removeListener(event, listener) {
-		if (event == 'data') {
-			//@TODO !!! this._listeners should be implemented
-			//console.log(this.listeners)
-			this.pause();
-		}
-
-		return Stream.prototype.removeListener.apply(this, arguments);
-	},
-	isPaused: function isPaused() {
-		return !this._readableState.flowing;
-	}
-};
-
-var Readable = _extend({
-	name: 'Readable',
-	super: [Stream, _Readable],
-	apply: [Stream, _named('Readable', _Readable)]
-});
-
-function _readFromInternalBuffer() {
-  var _writableState2;
-
-  var spliced = (_writableState2 = this._writableState).nodes.apply(_writableState2, arguments);
-
-  if (this._writableState.needDrain && this._writableState.length < this.options.highWaterMark) {
-    this._writableState.needDrain = false;
-    this.emit('drain');
-  }
-
-  return spliced;
-}
-
-function _flush() {
-  var _this = this;
-
-  var _writableState = this._writableState;
-
-
-  if (_writableState.corked) return;
-
-  if (!_writableState.length) {
-    if (_writableState.ended) this.emit('finish');
-
-    return;
-  }
-
-  var cb = function cb(err) {
-    if (err) _this.emit('error', err);
-
-    _writableState.consumed = true;
-
-    _process.nextTick(function () {
-      _flush.call(_this);
-    });
+      setTimeout(asyncFlush);
+    }
   };
-
-  if (!_writableState.corked && _writableState.consumed) {
-    _writableState.consumed = false;
-
-    if (this._writev) {
-      var nodes = _readFromInternalBuffer.call(this);
-
-      this._writev(nodes, cb);
-    } else {
-      var node = _readFromInternalBuffer.call(this, 1)[0];
-
-      this._write(node.chunk, node.encoding, cb);
-    }
-  }
-}
-
-function _Writable() {
-  var _this2 = this;
-
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-  this._write = options.write.bind(this);
-
-  this._writableState = new BufferState({
-    getBuffer: function getBuffer() {
-      return _this2._writableState._buffer;
-    },
-
-    corked: 0,
-    consumed: true,
-    needDrain: false,
-    ended: false,
-    decodeStrings: true
-  });
-}
-
-_Writable.prototype = {
-  write: function write(chunk /*, encoding*/) {
-    var _writableState = this._writableState;
-
-
-    if (_writableState.ended) throw new Error('Write after end');
-
-    this._writableState.push(chunk);
-
-    _flush.call(this);
-
-    return _writableState.length < this.options.highWaterMark;
-  },
-  end: function end() {
-    this.write.apply(this, arguments);
-    this._writableState.ended = true;
-    return this;
-  },
-  cork: function cork() {
-    this._writableState.corked++;
-  },
-  uncork: function uncork() {
-    if (this._writableState.corked > 0) {
-      this._writableState.corked--;
-      _flush.call(this);
-    }
-  }
 };
 
-var Writable = _extend({
-  name: 'Writable',
-  super: [Stream, _Writable],
-  apply: [Stream, _named('Writable', _Writable)]
-});
+var nextTick = asyncCall( /* .nextTick */0);
 
-function _Duplex() {
-  
-}
+var setImmediate = asyncCall( /* .immediate */1);
 
-var Duplex = _extend({
-  name: 'Duplex',
-  super: [Readable, Writable],
-  apply: [Readable, Writable, _named('Duplex', _Duplex)]
-});
-
-Duplex.prototype.on = function on() {
-  Readable.prototype.on.apply(this, arguments);
-  //Writable.prototype.on.apply(this, arguments)
-
-  return this;
-};
-
-function _Duplex$1() {
-  
-}
-
-var Duplex$2 = _extend({
-  name: 'Duplex',
-  super: [Readable, Writable],
-  apply: [Readable, Writable, _named('Duplex', _Duplex$1)]
-});
-
-Duplex$2.prototype.on = function on() {
-  Readable.prototype.on.apply(this, arguments);
-  //Writable.prototype.on.apply(this, arguments)
-
-  return this;
-};
-
-function _read(size) {
-  //console.log('_read()')
-  //dumb function
-}
-
-function _Transform() {
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-  Duplex$2.call(this, Object.assign({}, options, {
-    read: _read,
-    write: options.transform
-  }));
-}
-
-var Transform = _extend({
-  name: 'Transform',
-  super: [Duplex$2],
-  apply: [_named('Transform', _Transform)]
-});
-
-function _transform(data, encoding, cb) {
-  this.push(data, encoding);
-  cb();
-}
-
-function _PassThrough() {
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-  Transform.call(this, Object.assign({}, options, {
-    transform: _transform
-  }));
-}
-
-var PassThrough = _extend({
-  name: 'PassThrough',
-  super: [Transform],
-  apply: [_PassThrough]
-});
-
-function _Schedule() {
-  this.pending = Promise.resolve(null);
-}
-
-_Schedule.prototype = {
-  immediate: function immediate(task) {
-    var _this = this;
-
-    this.pending = Promise.all([this.pending, new Promise(function (done, fail) {
-      task(done, fail);
-    }).catch(function (err) {
-      return _this.emit('error', err);
-    })]);
-
-    return this;
-  },
-  deferred: function deferred(task) {
-    var _this2 = this;
-
-    this.pending = this.pending.then(function (r) {
-      return new Promise(function (done, fail) {
-        task(done, fail);
-      });
-    }).catch(function (err) {
-      return _this2.emit('error', err);
-    });
-
-    return this;
-  }
-};
-
-var Schedule = _extend({
-  name: 'Schedule',
-  super: [events, _named('Schedule', _Schedule)],
-  apply: [events, _named('Schedule', _Schedule)]
-});
+var timeoutCall = asyncCall( /* .timeeout */2);
 
 function series(arr, cb, done) {
   var i = 0;(function next(res) {
@@ -1431,7 +506,9 @@ function series(arr, cb, done) {
   })();
 }
 
-function _parse(chunk, encoding, cb) {
+//import { Writable } from 'stream'
+//import Schedule from 'schedule'
+function _parse(chunk) {
   var _busState = this._busState,
       incoming = _busState.incoming,
       watching = _busState.watching,
@@ -1557,66 +634,50 @@ function _parse(chunk, encoding, cb) {
       }
     }
   }
-
-  cb();
-}
-
-function _write(chunk, encoding, cb) {
-  var _this = this;
-
-  var highWaterMark = this.options.highWaterMark;
-
-  if (chunk.length > highWaterMark) {
-    var chunks = [];
-    var _loop = function _loop(bytesLeft, _offset) {
-      var subchunk = chunk.slice(_offset, _offset += highWaterMark);
-      chunks.push(function (next) {
-        return _parse.call(_this, subchunk, encoding, next);
-      });
-      offset = _offset;
-    };
-
-    for (var bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
-      _loop(bytesLeft, offset);
-    }
-
-    series(chunks, cb);
-  } else {
-    _parse.apply(this, arguments);
-  }
 }
 
 function _Bus() {
   var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-  Writable.call(this, Object.assign({}, options, {
-    write: _write
-  }));
-
   this._setup = options.setup.bind(this);
+  this.options = {
+    highWaterMark: options.highWaterMark || 64
+  };
 
-  this._busState = {
+  this._busState = new BufferState({
     watching: [],
     incoming: [],
     frame: [],
     configured: false
-  };
+  });
 }
 
 _Bus.prototype = {
   setup: function setup() {
-    var _this2 = this;
+    if (this._busState.configured) return Promise.reject('already configured');
 
-    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
+    this._busState.configured = true;
+    return this._setup.apply(this, arguments);
+  },
+  parse: function parse(chunk) {
+    var _this = this;
+
+    var highWaterMark = this.options.highWaterMark;
+
+    if (chunk.length > highWaterMark) {
+      var chunks = [];
+      for (var bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
+        var subchunk = chunk.slice(offset, offset += highWaterMark);
+        chunks.push(subchunk);
+      }
+
+      series(chunks, function (next, subchunk) {
+        _parse.call(_this, subchunk);
+        next();
+      });
+    } else {
+      _parse.apply(this, arguments);
     }
-
-    return this.deferred(function (slots) {
-      if (_this2._busState.configured) return Promise.reject('already configured');
-
-      _this2._busState.configured = true;
-      return _this2._setup.apply(_this2, [slots].concat(args));
-    });
   },
   watch: function watch(patterns, callback) {
     var watcher = {
@@ -1645,13 +706,13 @@ _Bus.prototype = {
     * @TODO - Proper unwatch(): delete all previously RXed watchers
     */
   rx: function rx(patterns, cb) {
-    var _this3 = this;
+    var _this2 = this;
 
     var watcher = this.watch(patterns, function (frame) {
       //this.unwatch(watcher)
-      var index = _this3._busState.watching.indexOf(watcher);
+      var index = _this2._busState.watching.indexOf(watcher);
 
-      if (index >= 0) _this3._busState.watching.splice(0, index + 1);
+      if (index >= 0) _this2._busState.watching.splice(0, index + 1);
 
       cb(frame);
     });
@@ -1659,25 +720,23 @@ _Bus.prototype = {
     return this;
   },
   tx: function tx(binary) {
-    var _this4 = this;
+    var _this3 = this;
 
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
-    return this.deferred(function () {
-      console.log('tx');
-      if ('timeout' in options) {
-        return new Promise(function (done, fail) {
-          _setTimeout(function () {
-            _this4.write(binary);
-            done();
-          }, options.timeout);
-        });
-      }
+    console.log('tx');
+    if ('timeout' in options) {
+      return new Promise(function (done, fail) {
+        setTimeout(function () {
+          _this3.write(binary);
+          done();
+        }, options.timeout);
+      });
+    }
 
-      _this4.write(binary);
+    this.write(binary);
 
-      return Promise.resolve();
-    });
+    return Promise.resolve();
   },
   reset: function reset() {
     this._busState.frame.splice(0);
@@ -1686,11 +745,36 @@ _Bus.prototype = {
   }
 };
 
-var Bus = _extend({
-  name: 'Bus',
-  super: [Writable, Schedule, _Bus],
-  apply: [_Bus, Schedule]
-});
+function _Schedule() {
+  this.pending = Promise.resolve(null);
+}
+
+_Schedule.prototype = {
+  immediate: function immediate(task) {
+    var _this = this;
+
+    this.pending = Promise.all([this.pending, new Promise(function (done, fail) {
+      task(done, fail);
+    }).catch(function (err) {
+      return _this.emit('error', err);
+    })]);
+
+    return this;
+  },
+  deferred: function deferred(task) {
+    var _this2 = this;
+
+    this.pending = this.pending.then(function (r) {
+      return new Promise(function (done, fail) {
+        task(done, fail);
+      });
+    }).catch(function (err) {
+      return _this2.emit('error', err);
+    });
+
+    return this;
+  }
+};
 
 var status = false;
 function blink(mode) {
@@ -1707,7 +791,7 @@ blink.start = function () {
 
     blink.once(LED2, 20, function cb() {
       if (status) {
-        _setTimeout(function () {
+        setTimeout(function () {
           return blink.once(LED2, 20, cb);
         }, 980);
       }
@@ -1726,7 +810,7 @@ blink.once = function (led) {
   var cb = arguments[2];
 
   led.write(true);
-  _setTimeout(function () {
+  setTimeout(function () {
     led.write(false);
     cb && cb();
   }, on);
@@ -1783,7 +867,7 @@ var data = { PN532_PREAMBLE: 0,
   PN532_MIFARE_ISO14443A: 0,
   MIFARE_CMD_AUTH_A: 96,
   MIFARE_CMD_AUTH_B: 97,
-  MIFARE_CMD_READ: 48,
+  MIFARE_CMD_READ_16: 48,
   MIFARE_CMD_WRITE_4: 162,
   MIFARE_CMD_WRITE_16: 160,
   MIFARE_CMD_TRANSFER: 176,
@@ -1897,8 +981,8 @@ var PN532_WAKEUP = data.PN532_WAKEUP;
 
 var MIFARE_CMD_AUTH_A = data.MIFARE_CMD_AUTH_A;
 
-var MIFARE_CMD_READ = data.MIFARE_CMD_READ;
-var MIFARE_CMD_WRITE_4 = data.MIFARE_CMD_WRITE_4;
+var MIFARE_CMD_READ_16 = data.MIFARE_CMD_READ_16;
+
 
 
 
@@ -1950,9 +1034,9 @@ var MIFARE_CMD_WRITE_4 = data.MIFARE_CMD_WRITE_4;
 var PN532_SAM_NORMAL_MODE = data.PN532_SAM_NORMAL_MODE;
 
 var check = function check(values) {
-  return 0x00 == 0xff & values.reduce(function (sum, value) {
-    return sum += value;
-  }, 0x00);
+  return !(0xff & -values.reduce(function (sum, value) {
+    return sum + value;
+  }, 0x00));
 };
 
 var LCS_std = function LCS_std(byte, length, frame) {
@@ -1983,9 +1067,9 @@ var ack = [new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTC
 var command = function command(_command) {
   return new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff & _command.length + 1, 0xff & ~_command.length, PN532_HOST_TO_PN532].concat(_command, [
   // checksum
-  ~(0xff & _command.reduce(function (checksum, byte) {
-    return checksum += byte;
-  }, 1 /** include PN532_HOST_TO_PN532 1 byte to length */)), PN532_POSTAMBLE]));
+  0xff & -_command.reduce(function (checksum, byte) {
+    return checksum + byte;
+  }, PN532_HOST_TO_PN532), PN532_POSTAMBLE]));
 };
 
 var data$2 = { TNF_EMPTY: 0,
@@ -2235,8 +1319,17 @@ var encoded = encodeMessage([textRecord('2enhello world!')]);
 var wakeup = command([PN532_WAKEUP]);
 var sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
 
-function setup(done) {
+function rx(data) {
   var _this = this;
+
+  this._busState.push(data);
+  this._busState.nodes().forEach(function (node) {
+    return _this.parse(node.chunk);
+  });
+}
+
+function setup(done) {
+  var _this2 = this;
 
   Serial1.setup(115200, {
     rx: B7, tx: B6
@@ -2245,14 +1338,14 @@ function setup(done) {
   Serial1.write(wakeup);
   Serial1.write(sam);
 
-  _setTimeout(function () {
+  setTimeout(function () {
     Serial1.read();
-    Serial1.pipe(_this);
+    Serial1.on('data', rx.bind(_this2));
   }, 1500);
 
-  _setTimeout(function () {
+  setTimeout(function () {
     blink.once(LED1, 20, function () {
-      return _setTimeout(function () {
+      return setTimeout(function () {
         return blink.once(LED1, 20);
       }, 200);
     });
@@ -2261,21 +1354,95 @@ function setup(done) {
   }, 2000);
 }
 
-var bus = new Bus({
+var bus = new _Bus({
   setup: setup, highWaterMark: 64
 });
 
+var schedule = new _Schedule();
+
 bus.on('error', console.error);
 
-bus.setup(Serial1);
+schedule.deferred(setup.bind(bus));
 
-var KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+var readBlock = function readBlock(uid, key, block) {
+  var auth = function auth(done, fail) {
+    "compiled";
 
-(function poll() {
-  var uid = void 0,
-      block = 4;
+    var AUTH = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_AUTH_A, block].concat(key, uid));
 
-  bus.deferred(function (done) {
+    bus.rx(ack, function (ack$$1) {});
+
+    bus.rx(err, function (err$$1) {
+      console.error(err$$1);
+      fail(err$$1);
+    });
+
+    bus.rx(info, function (frame) {
+      console.log('AUTH SUCCEED', {
+        code: frame[6],
+        body: frame.slice(7, -2)
+      });
+
+      done();
+    });
+
+    Serial1.write(AUTH);
+  };
+
+  var read = function read(done, fail) {
+    console.log('read');
+    var READ = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_READ_16, block]);
+
+    bus.rx(ack, function (ack$$1) {});
+
+    bus.rx(err, function (err$$1) {
+      console.error(err$$1);
+      fail(err$$1);
+    });
+
+    bus.rx(info, function (frame) {
+      var body = frame.slice(8, -2);
+      var data = {
+        block: block,
+        status: frame[7],
+        body: body,
+        length: body.length
+      };
+
+      done(data);
+    });
+
+    Serial1.write(READ);
+  };
+
+  return Promise.resolve().then(function () {
+    return new Promise(auth);
+  }).then(function () {
+    return new Promise(read);
+  });
+};
+
+var readSector = function readSector(uid, key, sector) {
+  return new Promise(function (done, fail) {
+    var readBlocksArr = [];
+    for (var block = sector * 4; block < sector * 4 + 4; block++) {
+      readBlocksArr.push(block);
+    }
+    series(readBlocksArr, function (next, block, index) {
+      readBlock(uid, key, block).then(function (data) {
+        readBlocksArr[index] = data;
+        next();
+      });
+    }, function () {
+      return done(readBlocksArr);
+    });
+  });
+};
+
+var key = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);(function poll() {
+  var uid = void 0;
+
+  schedule.deferred(function (done) {
     var LIST = command([PN532_COMMAND_INLISTPASSIVETARGET, 1, 0]);
 
     bus.rx(ack, function () {
@@ -2305,60 +1472,16 @@ var KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
     Serial1.write(LIST);
   });
 
-  bus.deferred(function (done, fail) {
-    var AUTH = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_AUTH_A, block].concat(KEY).concat(uid));
-
-    bus.rx(ack, function (ack$$1) {});
-
-    bus.rx(err, fail);
-
-    bus.rx(info, function (frame) {
-      console.log('AUTH SUCCEED' /*, {
-                                 code: frame[6],
-                                 body: frame.slice(7, 5 + frame[3])
-                                 }*/);
-
-      done();
-    });
-
-    Serial1.write(AUTH);
+  schedule.deferred(function (done, fail) {
+    readSector(uid, key, 0).then(function (data) {
+      console.log(data);
+      return data;
+    }).then(done).catch(console.error);
   });
 
-  bus.deferred(function (done, fail) {
-    var WRITE = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_WRITE_4, block].concat(encoded));
-
-    bus.rx(ack, function (ack$$1) {});
-
-    bus.rx(err, fail);
-
-    bus.rx(info, function (block) {
-      console.log('WRITE SUCCEED');
-
-      done();
-    });
-
-    Serial1.write(WRITE);
-  });
-
-  bus.deferred(function (done, fail) {
-    var READ = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_READ, block]);
-
-    bus.rx(ack, function (ack$$1) {});
-
-    bus.rx(err, fail);
-
-    bus.rx(info, function (block) {
-      console.log("RED", block);
-
-      done();
-    });
-
-    Serial1.write(READ);
-  });
-
-  bus.deferred(function (done) {
-    _setTimeout(function () {
-      console.log(_process.memory().free);
+  schedule.deferred(function (done) {
+    setTimeout(function () {
+      console.log(process.memory().free);
       done();
       poll();
     }, 1000);

@@ -1,4 +1,5 @@
 import Bus from 'bus'
+import Schedule from 'schedule'
 import blink from 'blink'
 import { command, ack, nack, info, xinfo, err } from 'nfc'
 import {
@@ -9,7 +10,7 @@ import {
   PN532_COMMAND_INDATAEXCHANGE,
   PN532_COMMAND_GETFIRMWAREVERSION,
   PN532_WAKEUP,
-  MIFARE_CMD_READ,
+  MIFARE_CMD_READ_16,
   MIFARE_CMD_AUTH_A,
   MIFARE_CMD_AUTH_B,
   MIFARE_CMD_WRITE_4,
@@ -18,7 +19,7 @@ import {
 
 import series from 'series'
 
-import { encodeMessage, textRecord } from 'esp-ndef'
+import { encodeMessage, decodeMessage, textRecord } from 'esp-ndef'
 
 blink()
 
@@ -29,8 +30,10 @@ const encoded = encodeMessage([
 const wakeup = command([PN532_WAKEUP])
 const sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0])
 
-
-
+function rx(data) {
+  this._busState.push(data)
+  this._busState.nodes().forEach(node => this.parse(node.chunk))
+}
 
 function setup(done) {
   Serial1.setup(115200, {
@@ -42,7 +45,7 @@ function setup(done) {
 
   setTimeout(() => {
     Serial1.read()
-    Serial1.pipe(this)
+    Serial1.on('data', rx.bind(this))
   }, 1500)
 
   setTimeout(() => {
@@ -56,20 +59,103 @@ const bus = new Bus({
   setup, highWaterMark: 64
 })
 
+const schedule = new Schedule()
+
 bus.on('error', console.error)
 
-bus.setup(Serial1)
+schedule.deferred(setup.bind(bus))
 
-const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
+const readBlock = (uid, key, block) => {
+  const auth = (done, fail) => {
+    "compiled"
 
-let afi = 0x00
+    const AUTH = command([
+      PN532_COMMAND_INDATAEXCHANGE,
+      1,
+      MIFARE_CMD_AUTH_A,
+      block,
+      ...key,
+      ...uid
+    ])
+
+    bus.rx(ack, ack => {})
+
+    bus.rx(err, err => {
+      console.error(err)
+      fail(err)
+    })
+
+    bus.rx(info, frame => {
+      console.log('AUTH SUCCEED', {
+        code: frame[6],
+        body: frame.slice(7, -2)
+      })
+
+      done()
+    })
+
+    Serial1.write(AUTH)
+  }
+
+  const read = (done, fail) => {
+    console.log('read')
+    const READ = command([
+      PN532_COMMAND_INDATAEXCHANGE,
+      1,
+      MIFARE_CMD_READ_16,
+      block
+    ])
+
+    bus.rx(ack, ack => {})
+
+    bus.rx(err, err => {
+      console.error(err)
+      fail(err)
+    })
+
+    bus.rx(info, frame => {
+      const body = frame.slice(8, -2)
+      const data = {
+        block,
+        status: frame[7],
+        body,
+        length: body.length
+      }
+
+      done(data)
+    })
+
+    Serial1.write(READ)
+  }
+
+  return Promise.resolve()
+    .then(() => new Promise(auth))
+    .then(() => new Promise(read))
+}
+
+const readSector = (uid, key, sector) => {
+  return new Promise((done, fail) => {
+    const readBlocksArr = []
+    for(let block = sector * 4; block < sector * 4 + 4; block ++) {
+      readBlocksArr.push(block)
+    }
+    series(readBlocksArr, (next, block, index) => {
+      readBlock(uid, key, block).then(data => {
+        readBlocksArr[index] = data
+        next()
+      })
+    }, () => done(readBlocksArr))
+  })
+}
+
+const key = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
 
 ;(function poll() {
   let uid,
-      block = 4,
+      block = 0,
       data = null
 
-  bus.deferred(done => {
+  schedule.deferred(done => {
     const LIST = command([
       PN532_COMMAND_INLISTPASSIVETARGET,
       1,
@@ -103,73 +189,16 @@ let afi = 0x00
     Serial1.write(LIST)
   })
 
-  bus.deferred((done, fail) => {
-    const AUTH = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_AUTH_A,
-      block
-    ].concat(KEY).concat(uid))
-
-    bus.rx(ack, ack => {})
-
-    bus.rx(err, fail)
-
-    bus.rx(info, frame => {
-      console.log('AUTH SUCCEED'/*, {
-        code: frame[6],
-        body: frame.slice(7, 5 + frame[3])
-      }*/)
-
-      done()
-    })
-
-    Serial1.write(AUTH)
+  schedule.deferred((done, fail) => {
+    readSector(uid, key, 0)
+      .then(data => {
+        console.log(data)
+        return data
+      })
+      .then(done).catch(console.error)
   })
 
-  bus.deferred((done, fail) => {
-    const WRITE = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_WRITE_4,
-      block
-    ].concat(encoded))
-
-    bus.rx(ack, ack => {})
-
-    bus.rx(err, fail)
-
-    bus.rx(info, block => {
-      console.log('WRITE SUCCEED')
-
-      done()
-    })
-
-    Serial1.write(WRITE)
-  })
-
-  bus.deferred((done, fail) => {
-    const READ = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_READ,
-      block
-    ])
-
-    bus.rx(ack, ack => {})
-
-    bus.rx(err, fail)
-
-    bus.rx(info, block => {
-      console.log("RED", block)
-
-      done()
-    })
-
-    Serial1.write(READ)
-  })
-
-  bus.deferred(done => {
+  schedule.deferred(done => {
     setTimeout(() => {
       console.log(process.memory().free)
       done()

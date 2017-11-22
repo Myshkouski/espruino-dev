@@ -1,444 +1,5 @@
 'use strict';
 
-const defProp = (obj, prop, desc) => {
-  try {
-    Object.defineProperty(obj, prop, desc);
-    return obj
-  } catch(e) {
-    if(desc.get)
-      obj.value = desc.get();
-    else if(desc.value)
-      obj[prop] = desc.value;
-
-    return obj
-  }
-};
-
-var _named = (name, f) => {
-  defProp(f, 'name', { value: name });
-  //defProp(f, 'toString', { value: () => '[Function' + (f.name !== undefined ? ': ' + f.name : '') + ']' })
-
-  return f
-};
-
-const SUPER_CHAIN_PROTO_PROP = '_super';
-const SUPER_CHAIN_APPLY_PROP = '_apply';
-const PROTOTYPE_IS_EXTENDED_PROP = '_isExtended';
-
-const _copyChain = (Extended, ProtoChain, chainPropName, ignoreExtended) => {
-  //if chain on [Extended] has not been created yet
-  if(!Extended.prototype[chainPropName])
-    defProp(Extended.prototype, chainPropName, { value: [] });
-
-  ProtoChain.forEach(Proto => {
-    //console.log(!!Proto.prototype['__extended__'], Proto)
-    //if [Proto] has been '__extended__' and has same-named proto chain, copy the Proto chain to Extended chain
-    const isExtended = !!Proto.prototype[PROTOTYPE_IS_EXTENDED_PROP],
-      hasSameChain = !!Proto.prototype[chainPropName];
-
-    const alreadyInChain = Extended.prototype[chainPropName].some(P => (P === Proto)),
-      shouldBePushed = (!isExtended || !ignoreExtended) && !alreadyInChain,
-      shouldCopyChain = isExtended && hasSameChain;
-
-    if(shouldCopyChain)
-      Proto.prototype[chainPropName].forEach(Proto => {
-        //avoid pushing twice
-        if(!Extended.prototype[chainPropName].some(P => (P === Proto)) ) {
-          //console.log('pushed', Proto)
-          Extended.prototype[chainPropName].push(Proto);
-        }
-      });
-
-    if(shouldBePushed)
-      Extended.prototype[chainPropName].push(Proto);
-  });
-
-  //console.log(Extended.prototype[chainPropName])
-};
-
-const _extend = (options = {}) => {
-  if(!options.apply)
-    options.apply = [];
-  if(!options.super)
-    options.super = [];
-  if(!options.static)
-    options.static = [];
-
-  const Child = options.super[0];
-
-  if(!options.name)
-    options.name = Child.name;
-
-  function Extended() {
-    Extended.prototype[SUPER_CHAIN_APPLY_PROP].forEach(Super => {
-      if(Super !== Extended) {
-        Super.apply(this, arguments);
-      }
-    });
-  }
-
-  _named(options.name, Extended);
-
-  for(let i in options.static) {
-    for(let prop in options.static[i]) {
-      if('prototype' != prop) {
-        defProp(Extended, prop, {
-          value: proto[prop],
-          enumerable: true,
-          writable: true
-        });
-      }
-    }
-  }
-
-  defProp(Extended, 'prototype', { value: {} });
-  defProp(Extended.prototype, 'constructor', { value: Child });
-  defProp(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true });
-
-  for(let i in options.super) {
-    function Proto() {}
-    Proto.prototype = options.super[i].prototype;
-    const proto = new Proto();
-
-    for(let prop in proto) {
-      if(['constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP].indexOf(prop) < 0) {
-        defProp(Extended.prototype, prop, {
-          value: proto[prop],
-          enumerable: true,
-          writable: true
-        });
-      }
-    }
-  }
-
-  _copyChain(Extended, options.super, SUPER_CHAIN_PROTO_PROP, false);
-  _copyChain(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
-
-  return Extended
-};
-
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-function EventEmitter() {
-  this._events = this._events || {};
-  this._maxListeners = this._maxListeners || undefined;
-}
-var events = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-EventEmitter.defaultMaxListeners = 10;
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!isNumber(n) || n < 0 || isNaN(n))
-    throw TypeError('n must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-EventEmitter.prototype.emit = function(type) {
-  var er, handler, len, args, i, listeners;
-
-  if (!this._events)
-    this._events = {};
-
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events.error ||
-        (isObject(this._events.error) && !this._events.error.length)) {
-      er = arguments[1];
-      if (er instanceof Error) {
-        throw er; // Unhandled 'error' event
-      } else {
-        // At least give some kind of context to the user
-        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
-        err.context = er;
-        throw err;
-      }
-    }
-  }
-
-  handler = this._events[type];
-
-  if (isUndefined(handler))
-    return false;
-
-  if (isFunction(handler)) {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        args = Array.prototype.slice.call(arguments, 1);
-        handler.apply(this, args);
-    }
-  } else if (isObject(handler)) {
-    args = Array.prototype.slice.call(arguments, 1);
-    listeners = handler.slice();
-    len = listeners.length;
-    for (i = 0; i < len; i++)
-      listeners[i].apply(this, args);
-  }
-
-  return true;
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  var m;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events)
-    this._events = {};
-
-  // To avoid recursion in the case that type === "newListener"! Before
-  // adding it to the listeners, first emit "newListener".
-  if (this._events.newListener)
-    this.emit('newListener', type,
-              isFunction(listener.listener) ?
-              listener.listener : listener);
-
-  if (!this._events[type])
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  else if (isObject(this._events[type]))
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  else
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  // Check for listener leak
-  if (isObject(this._events[type]) && !this._events[type].warned) {
-    if (!isUndefined(this._maxListeners)) {
-      m = this._maxListeners;
-    } else {
-      m = EventEmitter.defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      if (typeof console.trace === 'function') {
-        // not supported in IE 10
-        console.trace();
-      }
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  var fired = false;
-
-  function g() {
-    this.removeListener(type, g);
-
-    if (!fired) {
-      fired = true;
-      listener.apply(this, arguments);
-    }
-  }
-
-  g.listener = listener;
-  this.on(type, g);
-
-  return this;
-};
-
-// emits a 'removeListener' event iff the listener was removed
-EventEmitter.prototype.removeListener = function(type, listener) {
-  var list, position, length, i;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events || !this._events[type])
-    return this;
-
-  list = this._events[type];
-  length = list.length;
-  position = -1;
-
-  if (list === listener ||
-      (isFunction(list.listener) && list.listener === listener)) {
-    delete this._events[type];
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-
-  } else if (isObject(list)) {
-    for (i = length; i-- > 0;) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener)) {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0)
-      return this;
-
-    if (list.length === 1) {
-      list.length = 0;
-      delete this._events[type];
-    } else {
-      list.splice(position, 1);
-    }
-
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  var key, listeners;
-
-  if (!this._events)
-    return this;
-
-  // not listening for removeListener, no need to emit
-  if (!this._events.removeListener) {
-    if (arguments.length === 0)
-      this._events = {};
-    else if (this._events[type])
-      delete this._events[type];
-    return this;
-  }
-
-  // emit removeListener for all listeners on all events
-  if (arguments.length === 0) {
-    for (key in this._events) {
-      if (key === 'removeListener') continue;
-      this.removeAllListeners(key);
-    }
-    this.removeAllListeners('removeListener');
-    this._events = {};
-    return this;
-  }
-
-  listeners = this._events[type];
-
-  if (isFunction(listeners)) {
-    this.removeListener(type, listeners);
-  } else if (listeners) {
-    // LIFO order
-    while (listeners.length)
-      this.removeListener(type, listeners[listeners.length - 1]);
-  }
-  delete this._events[type];
-
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  var ret;
-  if (!this._events || !this._events[type])
-    ret = [];
-  else if (isFunction(this._events[type]))
-    ret = [this._events[type]];
-  else
-    ret = this._events[type].slice();
-  return ret;
-};
-
-EventEmitter.prototype.listenerCount = function(type) {
-  if (this._events) {
-    var evlistener = this._events[type];
-
-    if (isFunction(evlistener))
-      return 1;
-    else if (evlistener)
-      return evlistener.length;
-  }
-  return 0;
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  return emitter.listenerCount(type);
-};
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-
-function _Stream(options = {}) {
-	this.options = {
-		highWaterMark: options.highWaterMark || 128
-	};
-}
-
-const Stream = _extend({
-	name: 'Stream',
-	super: [events],
-	apply: [events, _named('Stream', _Stream)]
-});
-
-Stream.prototype.emit = function (event, err) {
-	if(event === 'error' && !(this['#onerror'] || this._events['error']))
-		throw new Error(err)
-
-	return events.prototype.emit.apply(this, arguments)
-};
-
 function BufferState(options = {}) {
   Object.assign(this, {
 		_buffer: [],
@@ -558,401 +119,6 @@ BufferState.prototype = {
   }
 };
 
-const encodings = {
-	BINARY: 'binary',
-	UTF8: 'utf8'
-};
-
-function toString(binary) {
-	let str = '';
-	for(let i = 0; i < binary.length; i++)
-		str += String.fromCharCode(binary[i]);
-	return str
-}
-
-// function _broadcast() {
-// 	let chunk = this.read()
-// 	if(chunk && chunk.length) {
-// 		process.nextTick(() => {
-// 			if(this._readableState.defaultEncoding == encodings.UTF8) {
-// 				chunk = toString(chunk)
-// 			}
-// 			this.emit('data', chunk, this._readableState.defaultEncoding)
-// 		})
-// 	}
-// }
-
-function _flow() {
-	if(this._readableState.flowing) {
-		// _broadcast.call(this)
-		let chunk = this.read();
-		if(chunk && chunk.length) {
-			process.nextTick(() => {
-				if(this._readableState.defaultEncoding == encodings.UTF8) {
-					chunk = toString(chunk);
-				}
-				this.emit('data', chunk, this._readableState.defaultEncoding);
-			});
-		}
-	}
-}
-
-function _end() {
-	this._readableState.flowing = null;
-	this._readableState.ended = true;
-
-}
-
-function _Readable(options = {}) {
-	this._readableState = new BufferState({
-		flowing: null,
-		ended: false,
-		defaultEncoding: encodings.BINARY
-	});
-
-	this.pipes = [];
-
-	this._read = options.read.bind(this);
-
-	if(!this._read)
-		throw new TypeError('_read() is not implemented')
-	if(!this._read instanceof Function)
-		throw new TypeError('\'options.read\' should be a function, passed', typeof options.read)
-}
-
-_Readable.prototype = {
-	pause() {
-		//console.log('pause()')
-		if(this._readableState.flowing !== false) {
-			this._readableState.flowing = false;
-			this.emit('pause');
-		}
-
-		return this
-	},
-
-	resume() {
-		if(!this._readableState.flowing) {
-			this._readableState.flowing = true;
-			this.emit('resume');
-			_flow.call(this);
-		}
-
-		return this
-	},
-
-	read(length) {
-		if(length < 0) {
-			throw new Error('"length" must be more than 0')
-		}
-
-		if(!this._readableState.ended) {
-			if(length === undefined) {
-				if(this._readableState.length < this.options.highWaterMark) {
-					this._read(this.options.highWaterMark - this._readableState.length);
-				}
-			} else if(length > this._readableState.length) {
-		 		this._read(length - this._readableState.length);
-		 	}
-		}
-
-		if(this._readableState.ended) {
-			if(this._readableState.length) {
-				return this._readableState.buffer()
-			}
-
-			return null
-		}
-
-		if(length !== undefined && this._readableState.length < length) {
-			return null
-		}
-
-		return this._readableState.buffer(length)
-	},
-
-	push(chunk) {
-		//console.log('push(' + chunk + ')')
-		if(chunk === null) {
-			_end.call(this);
-			return false
-		}
-
-		const overflow = this._readableState.push(chunk) > this.options.highWaterMark;
-
-		if(!overflow)
-			_flow.call(this);
-
-		return !overflow
-	},
-
-	pipe(writable) {
-		if(!this.pipes.some(pipe => { pipe.writable === writable; }) ) {
-			const listener = (data, pipe) => {
-				if(!writable.write(data)) {
-					pipe.stopped = true;
-					this.pause();
-
-					writable.once('drain', () => { this.resume(); });
-				}
-			};
-
-			const pipe = { writable, listener, stopped: undefined };
-
-			this
-				.on('data', data => { listener(data, pipe); })
-				.pipes.push(pipe);
-
-			if(writable instanceof Stream)
-				writable.emit('pipe');
-		}
-
-		return writable
-	},
-
-	unpipe(writable) {
-	  if(writable) {
-	    const pipe = this.pipes.find(pipe => { pipe.writable === writable; });
-
-	    if(pipe)
-	      this.removeListener('data', pipe.listener);
-	  }
-
-	  else {
-	    for(let index in this.pipes)
-	      this.removeListener(this.pipes[index].listener);
-	    this.pipes.splice(0);
-	  }
-	},
-
-	on(event, listener) {
-		if(event == 'data')
-			this.resume();
-
-		return Stream.prototype.on.apply(this, arguments)
-	},
-
-	removeListener(event, listener) {
-		if(event == 'data') {
-			//@TODO !!! this._listeners should be implemented
-			//console.log(this.listeners)
-			this.pause();
-		}
-
-		return Stream.prototype.removeListener.apply(this, arguments)
-	},
-
-	isPaused() {
-		return !this._readableState.flowing
-	}
-};
-
-const Readable = _extend({
-	name: 'Readable',
-	super: [Stream, _Readable],
-	apply: [Stream, _named('Readable', _Readable)]
-});
-
-function _readFromInternalBuffer(...args) {
-  const spliced = this._writableState.nodes(...args);
-
-  if(this._writableState.needDrain && (this._writableState.length < this.options.highWaterMark)) {
-    this._writableState.needDrain = false;
-    this.emit('drain');
-  }
-
-  return spliced
-}
-
-function _flush() {
-  const { _writableState } = this;
-
-  if(_writableState.corked)
-    return
-
-  if(!_writableState.length) {
-    if(_writableState.ended)
-      this.emit('finish');
-
-    return
-  }
-
-  const cb = err => {
-    if(err)
-      this.emit('error', err);
-
-    _writableState.consumed = true;
-
-    process.nextTick(() => {
-      _flush.call(this);
-    });
-  };
-
-  if(!_writableState.corked && _writableState.consumed) {
-    _writableState.consumed = false;
-
-    if(this._writev) {
-      const nodes = _readFromInternalBuffer.call(this);
-
-      this._writev(nodes, cb);
-    } else {
-      const node = _readFromInternalBuffer.call(this, 1)[0];
-
-      this._write(node.chunk, node.encoding, cb);
-    }
-  }
-}
-
-function _Writable(options = {}) {
-	this._write = options.write.bind(this);
-
-  this._writableState = new BufferState({
-    getBuffer: () => this._writableState._buffer,
-
-    corked: 0,
-    consumed: true,
-    needDrain: false,
-    ended: false,
-    decodeStrings: true
-  });
-}
-
-_Writable.prototype = {
-  write(chunk/*, encoding*/) {
-    const { _writableState } = this;
-
-    if(_writableState.ended)
-      throw new Error('Write after end')
-
-    this._writableState.push(chunk);
-
-    _flush.call(this);
-
-    return _writableState.length < this.options.highWaterMark
-  },
-
-  end() {
-    this.write.apply(this, arguments);
-    this._writableState.ended = true;
-    return this
-  },
-
-  cork() {
-    this._writableState.corked++;
-  },
-
-  uncork() {
-    if(this._writableState.corked > 0) {
-      this._writableState.corked--;
-      _flush.call(this);
-    }
-  }
-};
-
-const Writable = _extend({
-	name: 'Writable',
-  super: [Stream, _Writable],
-  apply: [Stream, _named('Writable', _Writable)]
-});
-
-function _Duplex(options = {}) {}
-
-const Duplex = _extend({
-	name: 'Duplex',
-  super: [Readable, Writable],
-  apply: [Readable, Writable, _named('Duplex', _Duplex)]
-});
-
-Duplex.prototype.on = function on() {
-  Readable.prototype.on.apply(this, arguments);
-  //Writable.prototype.on.apply(this, arguments)
-
-  return this
-};
-
-function _Duplex$1(options = {}) {}
-
-const Duplex$2 = _extend({
-	name: 'Duplex',
-  super: [Readable, Writable],
-  apply: [Readable, Writable, _named('Duplex', _Duplex$1)]
-});
-
-Duplex$2.prototype.on = function on() {
-  Readable.prototype.on.apply(this, arguments);
-  //Writable.prototype.on.apply(this, arguments)
-
-  return this
-};
-
-function _read(size) {
-  //console.log('_read()')
-  //dumb function
-}
-
-function _Transform(options = {}) {
-  Duplex$2.call(this, Object.assign({}, options, {
-    read: _read,
-    write: options.transform
-  }));
-}
-
-const Transform = _extend({
-	name: 'Transform',
-  super: [Duplex$2],
-  apply: [_named('Transform', _Transform)]
-});
-
-function _transform(data, encoding, cb) {
-  this.push(data, encoding);
-  cb();
-}
-
-function _PassThrough(options = {}) {
-  Transform.call(this, Object.assign({}, options, {
-    transform: _transform
-  }));
-}
-
-const PassThrough = _extend({
-  name: 'PassThrough',
-  super: [Transform],
-  apply: [_PassThrough]
-});
-
-function _Schedule() {
-  this.pending = Promise.resolve(null);
-}
-
-_Schedule.prototype = {
-  immediate(task) {
-    this.pending = Promise.all([
-      this.pending,
-      new Promise((done, fail) => {
-        task(done, fail);
-      }).catch(err => this.emit('error', err))
-    ]);
-
-    return this
-  },
-
-  deferred(task) {
-    this.pending = this.pending
-      .then(r => new Promise((done, fail) => {
-        task(done, fail);
-      }))
-      .catch(err => this.emit('error', err));
-
-    return this
-  }
-};
-
-const Schedule = _extend({
-  name: 'Schedule',
-  super: [events, _named('Schedule', _Schedule)],
-  apply: [events, _named('Schedule', _Schedule)]
-});
-
 function series(arr, cb, done) {
   let i = 0;(function next(res) {
     if (res !== undefined || i >= arr.length) {
@@ -964,7 +130,9 @@ function series(arr, cb, done) {
   })();
 }
 
-function _parse(chunk, encoding, cb) {
+//import { Writable } from 'stream'
+//import Schedule from 'schedule'
+function _parse(chunk) {
   const { incoming, watching, frame } = this._busState;
 
   let currentChunkIndex = 0,
@@ -1099,51 +267,49 @@ function _parse(chunk, encoding, cb) {
       }
     }
   }
-
-  cb();
-}
-
-function _write(chunk, encoding, cb) {
-  const highWaterMark = this.options.highWaterMark;
-
-  if(chunk.length > highWaterMark) {
-    const chunks = [];
-    for(let bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
-      const subchunk = chunk.slice(offset, offset += highWaterMark);
-      chunks.push(next => _parse.call(this, subchunk, encoding, next));
-    }
-
-    series(chunks, cb);
-  }
-  else {
-    _parse.apply(this, arguments);
-  }
 }
 
 function _Bus(options = {}) {
-  Writable.call(this, Object.assign({}, options, {
-    write: _write
-  }));
-
   this._setup = options.setup.bind(this);
+  this.options = {
+    highWaterMark: options.highWaterMark || 64
+  };
 
-  this._busState = {
+  this._busState = new BufferState({
     watching: [],
     incoming: [],
     frame: [],
     configured: false
-  };
+  });
 }
 
 _Bus.prototype = {
-  setup (...args) {
-    return this.deferred(slots => {
-      if(this._busState.configured)
-        return Promise.reject('already configured')
+  setup () {
+    if(this._busState.configured)
+      return Promise.reject('already configured')
 
-      this._busState.configured = true;
-      return this._setup(slots, ...args)
-    })
+    this._busState.configured = true;
+    return this._setup.apply(this, arguments)
+  },
+
+  parse(chunk) {
+    const highWaterMark = this.options.highWaterMark;
+
+    if(chunk.length > highWaterMark) {
+      const chunks = [];
+      for(let bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
+        const subchunk = chunk.slice(offset, offset += highWaterMark);
+        chunks.push(subchunk);
+      }
+
+      series(chunks, (next, subchunk) => {
+        _parse.call(this, subchunk);
+        next();
+      });
+    }
+    else {
+      _parse.apply(this, arguments);
+    }
   },
 
   watch (patterns, callback) {
@@ -1188,21 +354,19 @@ _Bus.prototype = {
   },
 
   tx(binary, options = {}) {
-    return this.deferred(() => {
-      console.log('tx');
-      if('timeout' in options) {
-        return new Promise((done, fail) => {
-          setTimeout(() => {
-            this.write(binary);
-            done();
-          }, options.timeout);
-        })
-      }
+    console.log('tx');
+    if('timeout' in options) {
+      return new Promise((done, fail) => {
+        setTimeout(() => {
+          this.write(binary);
+          done();
+        }, options.timeout);
+      })
+    }
 
-      this.write(binary);
+    this.write(binary);
 
-      return Promise.resolve()
-    })
+    return Promise.resolve()
   },
 
   reset () {
@@ -1212,11 +376,32 @@ _Bus.prototype = {
   }
 };
 
-const Bus = _extend({
-  name: 'Bus',
-  super: [Writable, Schedule, _Bus],
-  apply: [_Bus, Schedule]
-});
+function _Schedule() {
+  this.pending = Promise.resolve(null);
+}
+
+_Schedule.prototype = {
+  immediate(task) {
+    this.pending = Promise.all([
+      this.pending,
+      new Promise((done, fail) => {
+        task(done, fail);
+      }).catch(err => this.emit('error', err))
+    ]);
+
+    return this
+  },
+
+  deferred(task) {
+    this.pending = this.pending
+      .then(r => new Promise((done, fail) => {
+        task(done, fail);
+      }))
+      .catch(err => this.emit('error', err));
+
+    return this
+  }
+};
 
 let status = false;
 function blink(mode) {
@@ -1307,7 +492,7 @@ var data = { PN532_PREAMBLE:0,
   PN532_MIFARE_ISO14443A:0,
   MIFARE_CMD_AUTH_A:96,
   MIFARE_CMD_AUTH_B:97,
-  MIFARE_CMD_READ:48,
+  MIFARE_CMD_READ_16:48,
   MIFARE_CMD_WRITE_4:162,
   MIFARE_CMD_WRITE_16:160,
   MIFARE_CMD_TRANSFER:176,
@@ -1421,8 +606,8 @@ var PN532_WAKEUP = data.PN532_WAKEUP;
 
 var MIFARE_CMD_AUTH_A = data.MIFARE_CMD_AUTH_A;
 
-var MIFARE_CMD_READ = data.MIFARE_CMD_READ;
-var MIFARE_CMD_WRITE_4 = data.MIFARE_CMD_WRITE_4;
+var MIFARE_CMD_READ_16 = data.MIFARE_CMD_READ_16;
+
 
 
 
@@ -1473,7 +658,7 @@ var MIFARE_CMD_WRITE_4 = data.MIFARE_CMD_WRITE_4;
 
 var PN532_SAM_NORMAL_MODE = data.PN532_SAM_NORMAL_MODE;
 
-const check = values => 0x00 == 0xff & values.reduce((sum, value) => sum += value, 0x00);
+const check = values => !(0xff & (-values.reduce((sum, value) => sum + value, 0x00)));
 
 const LCS_std = (byte, length, frame) => check(frame.slice(-2));
 
@@ -1504,7 +689,6 @@ const ack = [
 
 
 
-
 const command = command =>
   new Uint8ClampedArray([
     PN532_PREAMBLE,
@@ -1515,7 +699,7 @@ const command = command =>
     PN532_HOST_TO_PN532,
     ...command,
     // checksum
-    ~(0xff & command.reduce((checksum, byte) => checksum += byte, 1 /** include PN532_HOST_TO_PN532 1 byte to length */)),
+    0xff & (-command.reduce((checksum, byte) => checksum + byte, PN532_HOST_TO_PN532)),
     PN532_POSTAMBLE
   ]);
 
@@ -1768,8 +952,10 @@ const encoded = encodeMessage([
 const wakeup = command([PN532_WAKEUP]);
 const sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
 
-
-
+function rx(data) {
+  this._busState.push(data);
+  this._busState.nodes().forEach(node => this.parse(node.chunk));
+}
 
 function setup(done) {
   Serial1.setup(115200, {
@@ -1781,7 +967,7 @@ function setup(done) {
 
   setTimeout(() => {
     Serial1.read();
-    Serial1.pipe(this);
+    Serial1.on('data', rx.bind(this));
   }, 1500);
 
   setTimeout(() => {
@@ -1791,21 +977,103 @@ function setup(done) {
   }, 2000);
 }
 
-const bus = new Bus({
+const bus = new _Bus({
   setup, highWaterMark: 64
 });
 
+const schedule = new _Schedule();
+
 bus.on('error', console.error);
 
-bus.setup(Serial1);
+schedule.deferred(setup.bind(bus));
 
-const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+const readBlock = (uid, key, block) => {
+  const auth = (done, fail) => {
+    "compiled";
 
-(function poll() {
-  let uid,
-      block = 4;
+    const AUTH = command([
+      PN532_COMMAND_INDATAEXCHANGE,
+      1,
+      MIFARE_CMD_AUTH_A,
+      block,
+      ...key,
+      ...uid
+    ]);
 
-  bus.deferred(done => {
+    bus.rx(ack, ack$$1 => {});
+
+    bus.rx(err, err$$1 => {
+      console.error(err$$1);
+      fail(err$$1);
+    });
+
+    bus.rx(info, frame => {
+      console.log('AUTH SUCCEED', {
+        code: frame[6],
+        body: frame.slice(7, -2)
+      });
+
+      done();
+    });
+
+    Serial1.write(AUTH);
+  };
+
+  const read = (done, fail) => {
+    console.log('read');
+    const READ = command([
+      PN532_COMMAND_INDATAEXCHANGE,
+      1,
+      MIFARE_CMD_READ_16,
+      block
+    ]);
+
+    bus.rx(ack, ack$$1 => {});
+
+    bus.rx(err, err$$1 => {
+      console.error(err$$1);
+      fail(err$$1);
+    });
+
+    bus.rx(info, frame => {
+      const body = frame.slice(8, -2);
+      const data = {
+        block,
+        status: frame[7],
+        body,
+        length: body.length
+      };
+
+      done(data);
+    });
+
+    Serial1.write(READ);
+  };
+
+  return Promise.resolve()
+    .then(() => new Promise(auth))
+    .then(() => new Promise(read))
+};
+
+const readSector = (uid, key, sector) => {
+  return new Promise((done, fail) => {
+    const readBlocksArr = [];
+    for(let block = sector * 4; block < sector * 4 + 4; block ++) {
+      readBlocksArr.push(block);
+    }
+    series(readBlocksArr, (next, block, index) => {
+      readBlock(uid, key, block).then(data => {
+        readBlocksArr[index] = data;
+        next();
+      });
+    }, () => done(readBlocksArr));
+  })
+};
+
+const key = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);(function poll() {
+  let uid;
+
+  schedule.deferred(done => {
     const LIST = command([
       PN532_COMMAND_INLISTPASSIVETARGET,
       1,
@@ -1839,73 +1107,16 @@ const KEY = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
     Serial1.write(LIST);
   });
 
-  bus.deferred((done, fail) => {
-    const AUTH = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_AUTH_A,
-      block
-    ].concat(KEY).concat(uid));
-
-    bus.rx(ack, ack$$1 => {});
-
-    bus.rx(err, fail);
-
-    bus.rx(info, frame => {
-      console.log('AUTH SUCCEED'/*, {
-        code: frame[6],
-        body: frame.slice(7, 5 + frame[3])
-      }*/);
-
-      done();
-    });
-
-    Serial1.write(AUTH);
+  schedule.deferred((done, fail) => {
+    readSector(uid, key, 0)
+      .then(data => {
+        console.log(data);
+        return data
+      })
+      .then(done).catch(console.error);
   });
 
-  bus.deferred((done, fail) => {
-    const WRITE = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_WRITE_4,
-      block
-    ].concat(encoded));
-
-    bus.rx(ack, ack$$1 => {});
-
-    bus.rx(err, fail);
-
-    bus.rx(info, block => {
-      console.log('WRITE SUCCEED');
-
-      done();
-    });
-
-    Serial1.write(WRITE);
-  });
-
-  bus.deferred((done, fail) => {
-    const READ = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_READ,
-      block
-    ]);
-
-    bus.rx(ack, ack$$1 => {});
-
-    bus.rx(err, fail);
-
-    bus.rx(info, block => {
-      console.log("RED", block);
-
-      done();
-    });
-
-    Serial1.write(READ);
-  });
-
-  bus.deferred(done => {
+  schedule.deferred(done => {
     setTimeout(() => {
       console.log(process.memory().free);
       done();

@@ -179,13 +179,11 @@
 //   }
 // }
 //
-// Promise.all = function(promises){
-//   var Class = this
-//
+// Promise.all = function(promises) {
 //   if (!(promises instanceof Array))
 //     throw new TypeError('You must pass an array to Promise.all().')
 //
-//   return new Class((resolve, reject) => {
+//   return new Promise((resolve, reject) => {
 //     var results = []
 //     var remaining = 0
 //
@@ -198,8 +196,7 @@
 //       }
 //     }
 //
-//     for (var i = 0, promise i < promises.length i++)
-//     {
+//     for (var i = 0, promise; i < promises.length; i++) {
 //       promise = promises[i]
 //
 //       if (promise && typeof promise.then === 'function')
@@ -212,26 +209,26 @@
 //       resolve(results)
 //   })
 // }
-//
-// Promise.race = function(promises){
-//   var Class = this
-//
-//   if (!(promises instanceof Array))
-//     throw new TypeError('You must pass an array to Promise.race().')
-//
-//   return new Class((resolve, reject) => {
-//     for (var i = 0, promise i < promises.length i++)
-//     {
-//       promise = promises[i]
-//
-//       if (promise && typeof promise.then === 'function')
-//         promise.then(resolve, reject)
-//       else
-//         resolve(promise)
-//     }
-//   })
-// }
-//
+
+Promise.race = function(promises){
+  var Class = this
+
+  if (!(promises instanceof Array))
+    throw new TypeError('You must pass an array to Promise.race().')
+
+  return new Class((resolve, reject) => {
+    for (var i = 0, promise; i < promises.length; i++)
+    {
+      promise = promises[i]
+
+      if (promise && typeof promise.then === 'function')
+        promise.then(resolve, reject)
+      else
+        resolve(promise)
+    }
+  })
+}
+
 // Promise.resolve = function(value) {
 //   var Class = this
 //
@@ -251,21 +248,5 @@
 //   })
 // }
 //
-if(!Promise.race) {
-  Promise.race = promises => {
-    if (!(promises instanceof Array))
-      throw new TypeError('You must pass an array to Promise.race().')
-
-    return new Promise((resolve, reject) => {
-      for (let i = 0, promise; i < promises.length; i ++) {
-        promise = promises[i]
-
-        promise && typeof promise.then === 'function'
-          ? promise.then(resolve, reject)
-          : resolve(promise)
-      }
-    })
-  }
-}
 
 export default Promise

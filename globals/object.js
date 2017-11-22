@@ -1,5 +1,6 @@
 Object.assign = (target, ...args) => {
-  for(let obj of args) {
+  for(let i in args) {
+    const obj = args[i]
     if(obj instanceof Object)
       for(let key in obj) {
         target[key] = obj[key]
