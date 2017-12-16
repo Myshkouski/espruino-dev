@@ -35,7 +35,7 @@ module.exports = {
 	module: {
 		rules: [
 			{
-				test: /\.yml$/,
+				test: /\.ya?ml$/,
 				loader: 'yaml-loader'
 			},
 			{
@@ -65,9 +65,7 @@ module.exports = {
 			'_named': resolve(__globals, 'namedFunc'),
 	    'extend': [resolve(__globals, 'extend'), 'extend'],
 			'_extend': [resolve(__globals, 'extend'), '_extend'],
-			'defProp': [resolve(__globals, 'def.js'), 'defProp'],
 			'Buffer': resolve(__globals, 'buffer'),
-			'process': resolve(__globals, 'process'),
 			'setImmediate': [resolve(__globals, 'event-loop'), 'setImmediate']
 		})
 	]

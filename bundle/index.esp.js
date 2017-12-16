@@ -1,21 +1,18 @@
 'use strict';
 
-var timers = {};
-
-function time(label) {
-  timers[label] = Date.now();
-}
-
-function timeEnd(label) {
-  if (label in timers) {
-    console.log(label + ': ' + (Date.now() - timers[label]).toFixed(3) + 'ms');
-    delete timers[label];
-  }
-}
-
 if (typeof console.time !== 'function') {
-  console.time = time;
-  console.timeEnd = timeEnd;
+  var timers = {};
+
+  console.time = function (label) {
+    timers[label] = Date.now();
+  };
+
+  console.timeEnd = function (label) {
+    if (label in timers) {
+      console.log(label + ': ' + (Date.now() - timers[label]).toFixed(3) + 'ms');
+      delete timers[label];
+    }
+  };
 }
 
 if (typeof console.error !== 'function') {
@@ -38,218 +35,6 @@ Array.prototype.concat = function () {
   return concatenated;
 };
 
-// var PENDING = 'pending'
-// var SEALED = 'sealed'
-// var FULFILLED = 'fulfilled'
-// var REJECTED = 'rejected'
-//
-// var NOOP = function() {}
-//
-// function invokeResolver(resolver, promise) {
-//   function resolvePromise(value) {
-//     resolve(promise, value)
-//   }
-//
-//   function rejectPromise(reason) {
-//     reject(promise, reason)
-//   }
-//
-//   try {
-//     resolver(resolvePromise, rejectPromise)
-//   } catch(e) {
-//     rejectPromise(e)
-//   }
-// }
-//
-// function invokeCallback(subscriber) {
-//   var owner = subscriber.owner
-//   var settled = owner.state_
-//   var value = owner.data_
-//   var callback = subscriber[settled]
-//   var promise = subscriber.then
-//
-//   if (typeof callback === 'function')
-//   {
-//     settled = FULFILLED
-//     try {
-//       value = callback(value)
-//     } catch(e) {
-//       reject(promise, e)
-//     }
-//   }
-//
-//   if (!handleThenable(promise, value))
-//   {
-//     if (settled === FULFILLED)
-//       resolve(promise, value)
-//
-//     if (settled === REJECTED)
-//       reject(promise, value)
-//   }
-// }
-//
-// function handleThenable(promise, value) {
-//   var resolved
-//
-//   try {
-//     if (promise === value)
-//       throw new TypeError('A promises callback cannot return that same promise.')
-//
-//     if (value && (typeof value === 'function' || typeof value === 'object'))
-//     {
-//       var then = value.then  // then should be retrived only once
-//
-//       if (typeof then === 'function')
-//       {
-//         then.call(value, function(val){
-//           if (!resolved)
-//           {
-//             resolved = true
-//
-//             if (value !== val)
-//               resolve(promise, val)
-//             else
-//               fulfill(promise, val)
-//           }
-//         }, function(reason){
-//           if (!resolved)
-//           {
-//             resolved = true
-//
-//             reject(promise, reason)
-//           }
-//         })
-//
-//         return true
-//       }
-//     }
-//   } catch (e) {
-//     if (!resolved)
-//       reject(promise, e)
-//
-//     return true
-//   }
-//
-//   return false
-// }
-//
-// function resolve(promise, value){
-//   if (promise === value || !handleThenable(promise, value))
-//     fulfill(promise, value)
-// }
-//
-// function publish(promise) {
-//   var callbacks = promise.then_
-//   promise.then_ = undefined
-//
-//   for (var i = 0 i < callbacks.length i++) {
-//     invokeCallback(callbacks[i])
-//   }
-// }
-//
-// function fulfill(promise, value){
-//   if (promise.state_ === PENDING)
-//   {
-//     promise.state_ = SEALED
-//     promise.data_ = value
-//
-//     setImmediate(() => {
-//       promise.state_ = FULFILLED
-//       publish(promise)
-//     })
-//   }
-// }
-//
-// function reject(promise, reason){
-//   if (promise.state_ === PENDING)
-//   {
-//     promise.state_ = SEALED
-//     promise.data_ = reason
-//
-//     setImmediate(() => {
-//       promise.state_ = REJECTED
-//       publish(promise)
-//     })
-//   }
-// }
-//
-// function Promise(resolver) {
-//   if (typeof resolver !== 'function')
-//     throw new TypeError('Promise constructor takes a function argument')
-//
-//   if (this instanceof Promise === false)
-//     throw new TypeError('Failed to construct \'Promise\': Please use the \'new\' operator, this object constructor cannot be called as a function.')
-//
-//   this.then_ = []
-//
-//   invokeResolver(resolver, this)
-// }
-//
-// Promise.prototype = {
-//   constructor: Promise,
-//
-//   state_: PENDING,
-//   then_: null,
-//   data_: undefined,
-//
-//   then: function(onFulfillment, onRejection){
-//     var subscriber = {
-//       owner: this,
-//       then: new this.constructor(NOOP),
-//       fulfilled: onFulfillment,
-//       rejected: onRejection
-//     }
-//
-//     if (this.state_ === FULFILLED || this.state_ === REJECTED)
-//     {
-//       // already resolved, call callback async
-//       setImmediate(() => {invokeCallback(subscriber)})
-//     }
-//     else
-//     {
-//       // subscribe
-//       this.then_.push(subscriber)
-//     }
-//
-//     return subscriber.then
-//   },
-//
-//   'catch': function(onRejection) {
-//     return this.then(null, onRejection)
-//   }
-// }
-//
-// Promise.all = function(promises) {
-//   if (!(promises instanceof Array))
-//     throw new TypeError('You must pass an array to Promise.all().')
-//
-//   return new Promise((resolve, reject) => {
-//     var results = []
-//     var remaining = 0
-//
-//     function resolver(index){
-//       remaining++
-//       return function(value){
-//         results[index] = value
-//         if (!--remaining)
-//           resolve(results)
-//       }
-//     }
-//
-//     for (var i = 0, promise; i < promises.length; i++) {
-//       promise = promises[i]
-//
-//       if (promise && typeof promise.then === 'function')
-//         promise.then(resolver(i), reject)
-//       else
-//         results[i] = promise
-//     }
-//
-//     if (!remaining)
-//       resolve(results)
-//   })
-// }
-
 Promise.race = function (promises) {
   var Class = this;
 
@@ -264,556 +49,90 @@ Promise.race = function (promises) {
   });
 };
 
+// Promise.resolve = function(value) {
+//   var Class = this
+//
+//   if (value && typeof value === 'object' && value.constructor === Class)
+//     return value
+//
+//   return new Class(function(resolve){
+//     resolve(value)
+//   })
+// }
+//
+// Promise.reject = function(reason){
+//   var Class = this
+//
+//   return new Class(function(resolve, reject){
+//     reject(reason)
+//   })
+// }
+//
+
 function Buffer() {
-	throw new Error('Buffer constructor is deprecated. Use Buffer.from() instead.');
+	throw new Error();
 }
 
-Buffer.from = function _createBuffer() {
-	//console.log(arguments)
+//Buffer.from = (iterable, offset, length) => E.toUint8Array(iterable)
+
+Buffer.from = function (_iterable, _offset, _length) {
 	var iterable = [];
-	if (typeof arguments[0] === 'string') {
-		for (var c in arguments[0]) {
-			iterable[c] = arguments[0].charCodeAt(c);
-		}iterable = new Uint8Array(iterable);
-	} else if (arguments[0] instanceof Uint8Array || arguments[0] instanceof Array) iterable = new Uint8Array(arguments[0]);
+	if (typeof _iterable == 'string') {
+		for (var c in _iterable) {
+			iterable[c] = _iterable.charCodeAt(c);
+		}
+	} else if (_iterable instanceof Uint8Array || _iterable instanceof Array) {
+		iterable = _iterable;
+	}
 
-	var offset = arguments[1] !== undefined ? arguments[1] : 0,
-	    length = arguments[2] !== undefined ? arguments[2] : iterable.length;
+	var offset = _offset !== undefined ? _offset : 0;
+	var length = _length !== undefined ? _length : iterable.length;
 
-	var array = [];
-
-	for (var i = offset; i--;) {
-		array[i] = 0;
-	}for (var _i = 0; _i < iterable.length && _i < length; _i++) {
-		array[offset + _i] = iterable[_i];
-	}for (var _i2 = array.length; _i2 < length; _i2++) {
-		array[_i2] = 0;
-	}var buffer = new Uint8Array(array);
-
-	return buffer;
+	return new Uint8Array([].concat([].fill(0, 0, offset), [].slice.call(iterable, 0), [].fill(0, iterable.length + offset, length)));
 };
 
-Buffer.concat = function concat() {
-	var list = arguments[0] || [],
-	    totalLength = arguments[1] !== undefined ? arguments[1] : list.reduce(function (totalLength, array) {
+Buffer.concat = function (_list, _totalLength) {
+	var list = _list || [],
+	    totalLength = _totalLength !== undefined ? _totalLength : list.reduce(function (totalLength, array) {
 		return totalLength + array.length;
 	}, 0),
 	    buffer = Buffer.from([], 0, totalLength);
 
-	var offset = 0;
-
-	list.forEach(function (buf) {
+	list.reduce(function (offset, buf) {
 		buffer.set(buf, offset);
-		offset += buf.length;
-	});
+		return offset + buf.length;
+	}, 0);
 
 	return buffer;
 };
 
-Object.assign = function (target) {
-  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    args[_key - 1] = arguments[_key];
-  }
-
-  for (var i in args) {
-    var obj = args[i];
-    if (obj instanceof Object) for (var key in obj) {
-      target[key] = obj[key];
-    }
-  }
-
-  return target;
-};
-
-function BufferState() {
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-  Object.assign(this, {
-    _buffer: [],
-    length: 0
-  }, options);
-}
-
-BufferState.prototype = {
-  push: function push(chunk) {
-    var node = {
-      chunk: Buffer.from(chunk),
-      next: null
-    };
-
-    if (this._buffer.length) {
-      this._buffer[this._buffer.length - 1].next = node;
-    }
-
-    this._buffer.push(node);
-    this.length += node.chunk.length;
-
-    return this.length;
-  },
-  unshift: function unshift(chunk) {
-    var node = {
-      chunk: Buffer.from(chunk),
-      encoding: 'binary',
-      next: null
-    };
-
-    if (this._buffer.length) {
-      node.next = this._buffer[0];
-    }
-
-    this._buffer.unshift(node);
-    this.length += node.chunk.length;
-
-    return this.length;
-  },
-  nodes: function nodes(count) {
-    var _this = this;
-
-    var nodes = this._buffer.splice(0, count);
-    nodes.forEach(function (node) {
-      return _this.length -= node.chunk.length;
-    });
-
-    return nodes;
-  },
-  at: function at(index) {
-    if (index >= this.length || index < 0) {
-      return;
-    }
-
-    for (var nodeIndex = 0; nodeIndex < this._buffer.length; nodeIndex++) {
-      if (index < this._buffer[nodeIndex].chunk.length) {
-        return {
-          index: index,
-          nodeIndex: nodeIndex
-        };
-      }
-
-      index -= this._buffer[nodeIndex].chunk.length;
-    }
-  },
-  buffer: function buffer(length) {
-    if (length === undefined) {
-      length = this.length;
-    }
-
-    if (!this.length) {
-      return Buffer.from([]);
-    }
-
-    if (length > this.length) {
-      length = this.length;
-    }
-
-    var to = void 0;
-
-    if (length) {
-      to = this.at(length);
-    }
-
-    if (!to) {
-      to = {
-        index: this.length - 1,
-        nodeIndex: this._buffer.length - 1
-      };
-    }
-
-    var buffer = Buffer.from([], 0, length);
-
-    var offset = this.nodes(to.nodeIndex).reduce(function (offset, node) {
-      buffer.set(node.chunk, offset);
-      return offset += node.chunk.length;
-    }, 0);
-
-    if (offset < length) {
-      var node = this.nodes(1).shift();
-
-      buffer.set(node.chunk.slice(0, length - offset), offset);
-      node.chunk = node.chunk.slice(length - offset);
-
-      this.unshift(node);
-    }
-
-    return buffer;
-
-    // return from.nodeIndex == to.nodeIndex
-    //   ? this._buffer[from.nodeIndex].chunk.slice(from.index, to.index)
-    //   : Buffer.concat([
-    //       this._buffer[from.nodeIndex].chunk.slice(from.index),
-    //       ...this._buffer.slice(1 + from.nodeIndex, to.nodeIndex).map(node => node.chunk),
-    //       this._buffer[to.nodeIndex].chunk.slice(0, to.index)
-    //     ])
-  }
-};
-
-var loop = [
-// nextTick
-{ queue: [], immediatePush: true, tick: false },
-// immediate
-{ queue: [], immediatePush: true, tick: false },
-// timeout
-{ queue: [], immediatePush: false, tick: false }];
-
-var tick = false;
-
-var asyncFlush = function asyncFlush() {
-  for (var stage in loop) {
-    if (loop[stage].queue.length) {
-      if (loop[stage].immediatePush) {
-        for (var exec = 0; exec < loop[stage].queue.length; exec++) {
-          loop[stage].queue[exec]();
-        }
-        loop[stage].queue.splice(0);
-      } else {
-        var queue = loop[stage].queue.splice(0);
-        for (var _exec = 0; _exec < queue.length; _exec++) {
-          queue[_exec]();
-        }
-      }
-    }
-
-    loop[stage].tick = tick = false;
-  }
-};
-
-var asyncCall = function asyncCall(stage) {
-  return function (cb) {
-    loop[stage].queue.push(cb);
-
-    if (!tick && !loop[stage].tick) {
-      loop[stage].tick = tick = true;
-
-      setTimeout(asyncFlush);
-    }
-  };
-};
-
-var nextTick = asyncCall( /* .nextTick */0);
-
-var setImmediate = asyncCall( /* .immediate */1);
-
-var timeoutCall = asyncCall( /* .timeeout */2);
-
-function series(arr, cb, done) {
-  var i = 0;(function next(res) {
-    if (res !== undefined || i >= arr.length) {
-      done && done(res);
-    } else {
-      setImmediate(function () {
-        return cb(next, arr[i], i++, arr);
-      });
-    }
-  })();
-}
-
-//import { Writable } from 'stream'
-//import Schedule from 'schedule'
-function _parse(chunk) {
-  var _busState = this._busState,
-      incoming = _busState.incoming,
-      watching = _busState.watching,
-      frame = _busState.frame;
-
-
-  var currentChunkIndex = 0,
-      currentIncomingWatcherIndex = 0,
-      incomingIndex = 0,
-      isEqual = false;
-
-  if (!watching.length) {
-    this.emit('error', new Error({
-      msg: 'Unexpected incoming data',
-      data: chunk
-    }));
-  } else {
-    for (; currentChunkIndex < chunk.length; currentChunkIndex++) {
-      frame.push(chunk[currentChunkIndex]);
-
-      if (!incoming.length) {
-        for (var watchingIndex in watching) {
-          try {
-            incoming.push({
-              patterns: watching[watchingIndex].patterns,
-              callback: watching[watchingIndex].callback,
-              currentPattern: watching[watchingIndex].patterns[0] instanceof Function ? watching[watchingIndex].patterns[0]([]) : watching[watchingIndex].patterns[0],
-              arrayOffset: 0,
-              patternIndex: 0,
-              byteIndex: 0,
-              length: 0
-            });
-          } catch (err) {
-            this.emit('error', err);
-          }
-        }
-      }
-
-      for (incomingIndex = 0; incomingIndex < incoming.length;) {
-        var incomingI = incoming[incomingIndex],
-            expected = incomingI.currentPattern[incomingI.byteIndex];
-
-        if (expected === undefined || expected === chunk[currentChunkIndex]) {
-          isEqual = true;
-
-          incomingI.byteIndex++;
-        } else if (expected instanceof Array) {
-          isEqual = true;
-
-          if (incomingI.arrayOffset <= 0 && expected[0] > 0) {
-            incomingI.arrayOffset = expected[0];
-          }
-
-          if (--incomingI.arrayOffset > 0) {
-            continue;
-          } else {
-            incomingI.byteIndex++;
-          }
-        } else if (expected instanceof Function) {
-          try {
-            isEqual = !!expected.call(this, chunk[currentChunkIndex], incomingI.length, frame.slice(-incomingI.length - 1));
-            incomingI.byteIndex++;
-          } catch (err) {
-            this.emit('error', err);
-            isEqual = false;
-          }
-        } else {
-          isEqual = false;
-        }
-
-        if (isEqual) {
-          incomingI.length++;
-
-          if (incomingI.byteIndex >= incomingI.currentPattern.length) {
-            if (++incomingI.patternIndex >= incomingI.patterns.length) {
-              try {
-                incomingI.callback.call(this, frame.splice(-incomingI.length), incomingI.pattern);
-              } catch (err) {
-                this.emit('error', err);
-              }
-
-              incoming.splice(0);
-              //break
-            } else {
-              var nextPattern = incomingI.patterns[incomingI.patternIndex];
-              incomingI.byteIndex = 0;
-              try {
-                if (nextPattern instanceof Function) {
-                  incomingI.currentPattern = nextPattern(frame.slice(-incomingI.length));
-                } else {
-                  incomingI.currentPattern = nextPattern;
-                }
-                incomingIndex++;
-              } catch (err) {
-                this.emit('error', err);
-                incoming.splice(incomingIndex, 1);
-              }
-            }
-          } else {
-            incomingIndex++;
-          }
-        } else {
-          incoming.splice(incomingIndex, 1);
-        }
-      }
-
-      if (!incoming.length && frame.length) {
-        this.emit('error', {
-          msg: 'Unparsed chunk',
-          data: frame.splice(0)
-        });
-        /*
-        if(!isChunkCorrupted) {
-          isChunkCorrupted = true
-          setImmediate(() => {
-            isChunkCorrupted = false
-            this.emit('error', {
-              msg: 'Unparsed chunk',
-              data: frame.splice(0)
-            })
-          })
-        }*/
-      }
-    }
-  }
-}
-
-function _Bus() {
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-  this._setup = options.setup.bind(this);
-  this.options = {
-    highWaterMark: options.highWaterMark || 64
-  };
-
-  this._busState = new BufferState({
-    watching: [],
-    incoming: [],
-    frame: [],
-    configured: false
-  });
-}
-
-_Bus.prototype = {
-  setup: function setup() {
-    if (this._busState.configured) return Promise.reject('already configured');
-
-    this._busState.configured = true;
-    return this._setup.apply(this, arguments);
-  },
-  parse: function parse(chunk) {
-    var _this = this;
-
-    var highWaterMark = this.options.highWaterMark;
-
-    if (chunk.length > highWaterMark) {
-      var chunks = [];
-      for (var bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
-        var subchunk = chunk.slice(offset, offset += highWaterMark);
-        chunks.push(subchunk);
-      }
-
-      series(chunks, function (next, subchunk) {
-        _parse.call(_this, subchunk);
-        next();
-      });
-    } else {
-      _parse.apply(this, arguments);
-    }
-  },
-  watch: function watch(patterns, callback) {
-    var watcher = {
-      patterns: patterns,
-      callback: callback
-    };
-
-    this._busState.watching.push(watcher);
-
-    return watcher;
-  },
-  unwatch: function unwatch(watcher) {
-    if (watcher) {
-      var index = this._busState.watching.indexOf(watcher);
-
-      if (index >= 0) this._busState.watching.splice(index, 1);
-    } else {
-      this._busState.watching.splice(0);
-    }
-
-    return this;
-  },
-
-
-  /**
-    * @TODO - Proper unwatch(): delete all previously RXed watchers
-    */
-  rx: function rx(patterns, cb) {
-    var _this2 = this;
-
-    var watcher = this.watch(patterns, function (frame) {
-      //this.unwatch(watcher)
-      var index = _this2._busState.watching.indexOf(watcher);
-
-      if (index >= 0) _this2._busState.watching.splice(0, index + 1);
-
-      cb(frame);
-    });
-
-    return this;
-  },
-  tx: function tx(binary) {
-    var _this3 = this;
-
-    var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-    console.log('tx');
-    if ('timeout' in options) {
-      return new Promise(function (done, fail) {
-        setTimeout(function () {
-          _this3.write(binary);
-          done();
-        }, options.timeout);
-      });
-    }
-
-    this.write(binary);
-
-    return Promise.resolve();
-  },
-  reset: function reset() {
-    this._busState.frame.splice(0);
-    this._busState.incoming.splice(0);
-    return this;
-  }
-};
-
-function _Schedule() {
-  this.pending = Promise.resolve(null);
-}
-
-_Schedule.prototype = {
-  immediate: function immediate(task) {
-    var _this = this;
-
-    this.pending = Promise.all([this.pending, new Promise(function (done, fail) {
-      task(done, fail);
-    }).catch(function (err) {
-      return _this.emit('error', err);
-    })]);
-
-    return this;
-  },
-  deferred: function deferred(task) {
-    var _this2 = this;
-
-    this.pending = this.pending.then(function (r) {
-      return new Promise(function (done, fail) {
-        task(done, fail);
-      });
-    }).catch(function (err) {
-      return _this2.emit('error', err);
-    });
-
-    return this;
-  }
-};
-
 var status = false;
-function blink(mode) {
-  if (mode === undefined) mode = !status;
+var defaultInterval = 20;
+var defaultLed = LED2;
 
-  !mode ? blink.stop() : blink.start();
+var once = function once(led, on, cb) {
+  led.write(1);
+  setTimeout(function () {
+    led.write(0);
+    cb && cb();
+  }, on || defaultInterval);
+};
 
-  return !!status;
-}
-
-blink.start = function () {
+var start = function start(led) {
+  if (!led) {
+    led = defaultLed;
+  }
   if (!status) {
     status = true;
 
-    blink.once(LED2, 20, function cb() {
+    once(led, defaultInterval, function cb() {
       if (status) {
         setTimeout(function () {
-          return blink.once(LED2, 20, cb);
-        }, 980);
+          return once(led, defaultInterval, cb);
+        }, 1000 - defaultInterval);
       }
     });
   }
-};
-
-blink.stop = function () {
-  if (status) {
-    status = false;
-  }
-};
-
-blink.once = function (led) {
-  var on = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 20;
-  var cb = arguments[2];
-
-  led.write(true);
-  setTimeout(function () {
-    led.write(false);
-    cb && cb();
-  }, on);
 };
 
 var data = { PN532_PREAMBLE: 0,
@@ -854,7 +173,7 @@ var data = { PN532_PREAMBLE: 0,
   PN532_COMMAND_TGGETINITIATORCOMMAND: 136,
   PN532_COMMAND_TGRESPONSETOINITIATOR: 144,
   PN532_COMMAND_TGGETTARGETSTATUS: 138,
-  PN532_WAKEUP: 85,
+  PN532_COMMAND_WAKEUP: 85,
   PN532_SPI_STATREAD: 2,
   PN532_SPI_DATAWRITE: 1,
   PN532_SPI_DATAREAD: 3,
@@ -864,16 +183,15 @@ var data = { PN532_PREAMBLE: 0,
   PN532_I2C_BUSY: 0,
   PN532_I2C_READY: 1,
   PN532_I2C_READYTIMEOUT: 20,
-  PN532_MIFARE_ISO14443A: 0,
-  MIFARE_CMD_AUTH_A: 96,
-  MIFARE_CMD_AUTH_B: 97,
-  MIFARE_CMD_READ_16: 48,
-  MIFARE_CMD_WRITE_4: 162,
-  MIFARE_CMD_WRITE_16: 160,
-  MIFARE_CMD_TRANSFER: 176,
-  MIFARE_CMD_DECREMENT: 192,
-  MIFARE_CMD_INCREMENT: 193,
-  MIFARE_CMD_RESTORE: 194,
+  MIFARE_COMMAND_AUTH_A: 96,
+  MIFARE_COMMAND_AUTH_B: 97,
+  MIFARE_COMMAND_READ_16: 48,
+  MIFARE_COMMAND_WRITE_4: 162,
+  MIFARE_COMMAND_WRITE_16: 160,
+  MIFARE_COMMAND_TRANSFER: 176,
+  MIFARE_COMMAND_DECREMENT: 192,
+  MIFARE_COMMAND_INCREMENT: 193,
+  MIFARE_COMMAND_RESTORE: 194,
   NDEF_URIPREFIX_NONE: 0,
   NDEF_URIPREFIX_HTTP_WWWDOT: 1,
   NDEF_URIPREFIX_HTTPS_WWWDOT: 2,
@@ -927,7 +245,7 @@ var data = { PN532_PREAMBLE: 0,
   PN532_BRTY_424KBPS: 2,
   PN532_BRTY_JEWEL: 4,
   NFC_WAIT_TIME: 30,
-  NFC_CMD_BUF_LEN: 64,
+  NFC_COMMAND_BUF_LEN: 64,
   NFC_FRAME_ID_INDEX: 6 };
 
 var PN532_PREAMBLE = data.PN532_PREAMBLE;
@@ -968,7 +286,7 @@ var PN532_COMMAND_INDATAEXCHANGE = data.PN532_COMMAND_INDATAEXCHANGE;
 
 
 
-var PN532_WAKEUP = data.PN532_WAKEUP;
+var PN532_COMMAND_WAKEUP = data.PN532_COMMAND_WAKEUP;
 
 
 
@@ -978,12 +296,11 @@ var PN532_WAKEUP = data.PN532_WAKEUP;
 
 
 
+var MIFARE_COMMAND_AUTH_A = data.MIFARE_COMMAND_AUTH_A;
 
-var MIFARE_CMD_AUTH_A = data.MIFARE_CMD_AUTH_A;
+var MIFARE_COMMAND_READ_16 = data.MIFARE_COMMAND_READ_16;
 
-var MIFARE_CMD_READ_16 = data.MIFARE_CMD_READ_16;
-
-
+var MIFARE_COMMAND_WRITE_16 = data.MIFARE_COMMAND_WRITE_16;
 
 
 
@@ -1033,10 +350,15 @@ var MIFARE_CMD_READ_16 = data.MIFARE_CMD_READ_16;
 
 var PN532_SAM_NORMAL_MODE = data.PN532_SAM_NORMAL_MODE;
 
+
+
+var PN532_BRTY_ISO14443A = data.PN532_BRTY_ISO14443A;
+var PN532_BRTY_ISO14443B = data.PN532_BRTY_ISO14443B;
+
 var check = function check(values) {
   return !(0xff & -values.reduce(function (sum, value) {
     return sum + value;
-  }, 0x00));
+  }, 0));
 };
 
 var LCS_std = function LCS_std(byte, length, frame) {
@@ -1048,21 +370,18 @@ var CHECKSUM_std = function CHECKSUM_std(byte, length, frame) {
 };
 
 var BODY_std = function BODY_std(frame) {
-  var arr = [];
-  for (var i = 0; i < frame[3] - 1; i++) {
-    arr.push(undefined);
-  }return arr;
+  return [[frame[3] - 1]];
 };
 
-var info = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS_std, PN532_PN532_TO_HOST], BODY_std, [CHECKSUM_std, PN532_POSTAMBLE]];
+var INFO = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS_std, PN532_PN532_TO_HOST], BODY_std, [CHECKSUM_std, PN532_POSTAMBLE]];
 
 
 
-var err = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM_std, PN532_POSTAMBLE]];
+var ERR = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM_std, PN532_POSTAMBLE]];
 
-var ack = [new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE])];
+var ACK = [new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE])];
 
-
+var NACK = [new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff, 0x00, PN532_POSTAMBLE])];
 
 var command = function command(_command) {
   return new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff & _command.length + 1, 0xff & ~_command.length, PN532_HOST_TO_PN532].concat(_command, [
@@ -1071,6 +390,682 @@ var command = function command(_command) {
     return checksum + byte;
   }, PN532_HOST_TO_PN532), PN532_POSTAMBLE]));
 };
+
+Object.assign = function (target) {
+  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    args[_key - 1] = arguments[_key];
+  }
+
+  for (var i in args) {
+    var obj = args[i];
+    if (obj instanceof Object) {
+      for (var key in obj) {
+        target[key] = obj[key];
+      }
+    }
+  }
+
+  return target;
+};
+
+var loop = [
+// nextTick
+{ queue: [], immediatePush: true, tick: false },
+// immediate
+{ queue: [], immediatePush: true, tick: false },
+// timeout
+{ queue: [], immediatePush: false, tick: false }];
+
+var tick = false;
+
+var asyncFlush = function asyncFlush() {
+  for (var stage in loop) {
+    if (loop[stage].queue.length) {
+      if (loop[stage].immediatePush) {
+        for (var exec = 0; exec < loop[stage].queue.length; exec++) {
+          loop[stage].queue[exec]();
+        }
+        loop[stage].queue.splice(0);
+      } else {
+        var queue = loop[stage].queue.splice(0);
+        for (var _exec = 0; _exec < queue.length; _exec++) {
+          queue[_exec]();
+        }
+      }
+    }
+
+    loop[stage].tick = tick = false;
+  }
+};
+
+var asyncCall = function asyncCall(stage) {
+  return function (cb) {
+    loop[stage].queue.push(cb);
+
+    if (!tick && !loop[stage].tick) {
+      loop[stage].tick = tick = true;
+
+      setTimeout(asyncFlush);
+    }
+  };
+};
+
+var nextTick = asyncCall( /* .nextTick */0);
+
+var setImmediate = asyncCall( /* .immediate */1);
+
+var timeoutCall = asyncCall( /* .timeeout */2);
+
+function BufferState() {
+  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+  Object.assign(this, {
+    _buffer: [],
+    length: 0
+  }, options);
+}
+
+BufferState.prototype = {
+  push: function push(chunk) {
+    if (chunk.length) {
+      var node = {
+        chunk: Buffer.from(chunk),
+        encoding: 'binary',
+        next: null
+      };
+
+      if (this._buffer.length) {
+        this._buffer[this._buffer.length - 1].next = node;
+      }
+
+      this._buffer.push(node);
+      this.length += node.chunk.length;
+    }
+
+    return this.length;
+  },
+  unshift: function unshift(chunk) {
+    var node = {
+      chunk: Buffer.from(chunk),
+      encoding: 'binary',
+      next: null
+    };
+
+    if (this._buffer.length) {
+      node.next = this._buffer[0];
+    }
+
+    this._buffer.unshift(node);
+    this.length += node.chunk.length;
+
+    return this.length;
+  },
+  nodes: function nodes(count) {
+    var _this = this;
+
+    var nodes = this._buffer.splice(0, count);
+    nodes.forEach(function (node) {
+      return _this.length -= node.chunk.length;
+    });
+
+    return nodes;
+  },
+  at: function at(index) {
+    if (index >= this.length || index < 0) {
+      return;
+    }
+
+    for (var nodeIndex = 0; nodeIndex < this._buffer.length; nodeIndex++) {
+      var chunk = this._buffer[nodeIndex].chunk;
+      if (index < chunk.length) {
+        return {
+          index: index,
+          nodeIndex: nodeIndex,
+          value: chunk[index]
+        };
+      }
+
+      index -= chunk.length;
+    }
+  },
+  for: function _for(from, to, callee) {
+    var firstNode = this._buffer[from.nodeIndex];
+    for (var index = from.nodeIndex; index < firstNode.chunk.length; index++) {
+      callee.call(this, firstNode.chunk[index]);
+    }
+
+    for (var nodeIndex = 1 + from.nodeIndex; nodeIndex < to.nodeIndex; nodeIndex++) {
+      var node = this._buffer[nodeIndex];
+      for (var _index = 0; _index < node.chunk.length; _index++) {
+        callee.call(this, node.chunk[_index]);
+      }
+    }
+
+    if (from.nodeIndex < to.nodeIndex) {
+      var lastNode = this._buffer[to.nodeIndex];
+      for (var _index2 = 0; _index2 <= to.index; _index2++) {
+        callee.call(this, lastNode.chunk[_index2]);
+      }
+    }
+  },
+  slice: function slice(length) {
+    if (length === undefined) {
+      length = this.length;
+    }
+
+    if (!length) {
+      return Buffer.from([]);
+    }
+
+    if (length > this.length) {
+      length = this.length;
+    }
+
+    var to = void 0;
+
+    if (length) {
+      to = this.at(length);
+    }
+
+    if (!to) {
+      to = {
+        index: this.length - 1,
+        nodeIndex: this._buffer.length - 1
+      };
+    }
+
+    var buffer = Buffer.from([], 0, length);
+
+    var offset = this._buffer.slice(0, to.nodeIndex).reduce(function (offset, node) {
+      buffer.set(node.chunk, offset);
+      return offset + node.chunk.length;
+    }, 0);
+
+    if (offset < length) {
+      var node = this._buffer[to.nodeIndex];
+
+      buffer.set(node.chunk.slice(0, length - offset), offset);
+    }
+
+    return buffer;
+  },
+  buffer: function buffer(length) {
+    if (length === undefined) {
+      length = this.length;
+    }
+
+    if (!length) {
+      return Buffer.from([]);
+    }
+
+    if (length > this.length) {
+      length = this.length;
+    }
+
+    var to = void 0;
+
+    if (length) {
+      // console.time('at')
+      to = this.at(length);
+      // console.timeEnd('at')
+    }
+
+    if (!to) {
+      to = {
+        index: this.length - 1,
+        nodeIndex: this._buffer.length - 1
+      };
+    }
+    // console.time('from')
+    var buffer = Buffer.from([], 0, length);
+    // console.timeEnd('from')
+    // console.time('offset')
+
+    // console.timeEnd('buffer')
+    var offset = this.nodes(to.nodeIndex).reduce(function (offset, node) {
+      buffer.set(node.chunk, offset);
+      return offset + node.chunk.length;
+    }, 0);
+    // console.timeEnd('offset')
+    if (offset < length) {
+      var node = this.nodes(1)[0];
+
+      buffer.set(node.chunk.slice(0, length - offset), offset);
+      node.chunk = node.chunk.slice(length - offset);
+
+      this.unshift(node.chunk);
+    }
+
+    return buffer;
+
+    // return from.nodeIndex == to.nodeIndex
+    //   ? this._buffer[from.nodeIndex].chunk.slice(from.index, to.index)
+    //   : Buffer.concat([
+    //       this._buffer[from.nodeIndex].chunk.slice(from.index),
+    //       ...this._buffer.slice(1 + from.nodeIndex, to.nodeIndex).map(node => node.chunk),
+    //       this._buffer[to.nodeIndex].chunk.slice(0, to.index)
+    //     ])
+  }
+};
+
+function series(arr, cb, done) {
+  var i = 0;
+  var aborted = false;
+  (function next(res) {
+    if (!aborted) {
+      if (typeof res !== 'undefined' || i >= arr.length) {
+        done && done(res);
+      } else {
+        setImmediate(function () {
+          try {
+            cb(next, arr[i], i++, arr);
+          } catch (err) {
+            next(err);
+            aborted = true;
+          }
+        });
+      }
+    }
+  })();
+}
+
+var DEFAULT_HIGHWATERMARK = 64;
+// const defaultWatcher = {
+//   cache: {},
+//   currentPattern: null,
+//   arrayOffset: 0,
+//   patternIndex: 0,
+//   byteIndex: 0,
+//   length: 0,
+//   active: false
+// }
+
+function _resetWatcher(watcher) {
+  watcher.currentPattern = null;
+  watcher.arrayOffset = watcher.patternIndex = watcher.byteIndex = watcher.length = 0;
+  watcher.active = false;
+  return watcher;
+
+  // return Object.assign(watcher, defaultWatcher)
+}
+
+function _parse() {
+  var _this = this;
+
+  var _busState = this._busState,
+      watching = _busState.watching,
+      frame = _busState.frame,
+      _buffer = _busState._buffer;
+
+
+  if (!watching.length) {
+    this.emit('error', {
+      msg: 'Unexpected watching data',
+      data: this._busState.buffer()
+    });
+    return;
+  }
+
+  if (this._busState.nodeIndex < 0) {
+    this._busState.nodeIndex = 0;
+  }
+
+  for (; this._busState.nodeIndex < _buffer.length; this._busState.nodeIndex++) {
+    var chunk = _buffer[this._busState.nodeIndex].chunk;
+
+    var currentChunkIndex = currentIncomingWatcherIndex = watcherIndex = 0,
+        isEqual = isChunkCorrupted = false;
+
+    for (; currentChunkIndex < chunk.length; currentChunkIndex++) {
+      if (!this._busState.active) {
+        this._busState.active = this._busState.watching.reduce(function (active, watcher) {
+          var patterns = watcher.patterns;
+
+          try {
+            watcher.currentPattern = typeof patterns[0] == 'function' ? patterns[0](Buffer.from([])) : patterns[0], watcher.active = true;
+            return active + 1;
+          } catch (err) {
+            _this.emit('error', err);
+            return active;
+          }
+        }, 0);
+      }
+
+      var byte = chunk[currentChunkIndex];
+
+      for (watcherIndex = 0; watcherIndex < watching.length; watcherIndex++, isEqual = false) {
+        var watcher = watching[watcherIndex];
+
+        if (!watcher.active) {
+          continue;
+        }
+
+        var expected = watcher.currentPattern[watcher.byteIndex];
+
+        // console.log('current watching:', watcher.currentPattern)
+        // console.log('current chunk:', chunk)
+        // console.log('byte:', byte)
+        // console.log('expected:', expected)
+
+        if (expected === undefined || expected === byte) {
+          isEqual = true;
+        } else if (Array.isArray(expected)) {
+          if (watcher.arrayOffset <= 0 && expected[0] > 0) {
+            watcher.arrayOffset = expected[0];
+          }
+
+          if (--watcher.arrayOffset > 0) {
+            watcher.length++;
+            continue;
+          }
+
+          isEqual = true;
+        } else if (typeof expected == 'function') {
+          try {
+            isEqual = !!expected.call(this, byte, watcher.length, this._busState.slice(1 + watcher.length));
+          } catch (err) {
+            isEqual = false;
+            this.emit('error', err);
+          }
+        }
+
+        if (isEqual) {
+          watcher.length++;
+
+          if (++watcher.byteIndex >= watcher.currentPattern.length) {
+            if (++watcher.patternIndex >= watcher.patterns.length) {
+              console.time('buffer');
+              // console.log(watcher.callback)
+              var _chunk = this._busState.buffer(watcher.length);
+              console.timeEnd('buffer');
+              this._busState.nodeIndex = -1;
+              try {
+                console.time('cb');
+                watcher.callback(_chunk,
+                // frame.splice(-watcher.length),
+                watcher.pattern);
+                console.timeEnd('cb');
+              } catch (err) {
+                this.emit('error', err);
+              }
+              // this._busState.watching = []
+              console.time('reset');
+              watching.forEach(_resetWatcher);
+              this._busState.active = 0;
+              console.timeEnd('reset');
+            } else {
+              // console.time('next pattern')
+              var nextPattern = watcher.patterns[watcher.patternIndex];
+              watcher.byteIndex = 0;
+
+              try {
+                if (typeof nextPattern == 'function') {
+                  watcher.currentPattern = nextPattern.call(this, this._busState.slice(watcher.length));
+                } else {
+                  watcher.currentPattern = nextPattern;
+                }
+              } catch (err) {
+                _resetWatcher(watcher);
+                this._busState.active--;
+
+                this.emit('error', err);
+              }
+              // console.timeEnd('next pattern')
+            }
+          }
+        } else {
+          _resetWatcher(watcher);
+          this._busState.active--;
+
+          if (!watching.length && this._busState.length) {
+            this.emit('error', {
+              msg: 'Unparsed chunk',
+              data: this._busState.buffer() // frame.splice(0)
+            });
+            /*
+            if(!isChunkCorrupted) {
+              isChunkCorrupted = true
+              setImmediate(() => {
+                isChunkCorrupted = false
+                this.emit('error', {
+                  msg: 'Unparsed chunk',
+                  data: frame.splice(0)
+                })
+              })
+            }*/
+          }
+        }
+
+        // console.timeEnd('isEqual')
+      }
+    }
+  }
+}
+
+function _Bus() {
+  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+  this._setup = options.setup.bind(this);
+  this._read = options.read.bind(this);
+  this._write = options.write.bind(this);
+
+  this.options = {
+    highWaterMark: options.highWaterMark || DEFAULT_HIGHWATERMARK
+  };
+
+  this._busState = new BufferState({
+    watching: [],
+    active: 0,
+    nodeIndex: 0,
+    configured: false,
+    ticker: false
+  });
+}
+
+_Bus.prototype = {
+  setup: function setup() {
+    if (this._busState.configured) {
+      return Promise.reject('already configured');
+    }
+
+    this._busState.configured = true;
+    return this._setup.apply(this, arguments);
+  },
+  parse: function parse(chunk) {
+    var _this2 = this;
+
+    this._busState.push(chunk);
+
+    if (!this._busState.ticker) {
+      this._busState.ticker = true;
+      setImmediate(function () {
+        _this2._busState.ticker = false;
+        _parse.call(_this2);
+      });
+    }
+    // const highWaterMark = this.options.highWaterMark,
+    //       parse = _parse.bind(this)
+    //
+    // if(chunk.length > highWaterMark) {
+    //   const chunks = []
+    //   let subchunkIndex = 0
+    //
+    //   for(let bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
+    //     const subchunk = chunk.slice(offset, offset += highWaterMark)
+    //     chunks.push(subchunk)
+    //   }
+    //
+    //   series(chunks, (next, subchunk) => {
+    //     parse(subchunk)
+    //     next()
+    //   })
+    // }
+    // else {
+    //   parse(chunk)
+    // }
+  },
+  watch: function watch(patterns, cb) {
+    var watcher = _resetWatcher({
+      patterns: patterns,
+      callback: cb.bind(this)
+    });
+
+    this._busState.watching.push(watcher);
+
+    return watcher;
+  },
+  unwatch: function unwatch(watcher) {
+    if (watcher) {
+      var index = this._busState.watching.indexOf(watcher);
+
+      if (index >= 0) {
+        this._busState.watching.splice(index, 1);
+      }
+    } else {
+      this._busState.watching.splice(0);
+    }
+
+    return this;
+  },
+
+
+  /**
+    @TODO Promise interface
+  */
+
+  rx: function rx(patterns, cb) {
+    var watcher = this.watch(patterns, cb);
+    this._read();
+    return watcher;
+  },
+  tx: function tx(binary) {
+    var _this3 = this;
+
+    var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    if ('timeout' in options) {
+      setTimeout(function () {
+        _this3._write(binary);
+      }, options.timeout);
+    } else {
+      this._write(binary);
+    }
+
+    return this;
+  },
+  reset: function reset() {
+    this._busState.watching.splice(0);
+    return this;
+  }
+};
+
+var parseInfo = function parseInfo(chunk) {
+  return {
+    raw: chunk,
+    code: chunk[6],
+    body: Buffer.from(chunk.slice(7, 5 + chunk[3]))
+  };
+};
+
+var parseBlockData = function parseBlockData(data$$1) {
+  if (data$$1.body.length == 1) {
+    throw {
+      cmd: data$$1.code,
+      errCode: data$$1.body[0]
+    };
+  } else {
+    return {
+      chunk: data$$1.body.slice(1)
+    };
+  }
+};
+
+var NfcBus = {
+  makeTransaction: function makeTransaction(cmd, info, parsers) {
+    var _this = this;
+
+    return new Promise(function (done, fail) {
+      // Don't be silly again - info frame refers to index from beginning, i.e. to ACK
+      // this.rx([...ACK, ...info], chunk => done((parsers || [sliceAck, parseInfo]).reduce((data, parse) => parse(data), chunk)))
+      _this.rx(ACK, function () {
+        _this.rx(info, function (chunk) {
+          return done((parsers || [parseInfo]).reduce(function (data$$1, parse) {
+            return parse(data$$1);
+          }, chunk));
+        });
+      });
+
+      _this.rx(NACK, fail);
+      _this.rx(ERR, fail);
+
+      _this.tx(command(cmd));
+    }).catch(function (err) {
+      _this.unwatch();
+      throw err;
+    }).then(function (data$$1) {
+      _this.unwatch();
+      return data$$1;
+    });
+  },
+  findTargets: function findTargets(count, type) {
+    if (type == 'A') {
+      type = PN532_BRTY_ISO14443A;
+    } else if (type == 'B') {
+      type = PN532_BRTY_ISO14443B;
+    } else {
+      throw new Error('Unknown ISO14443 type:', type);
+    }
+
+    return this.makeTransaction([PN532_COMMAND_INLISTPASSIVETARGET, count, type], INFO, [function (chunk) {
+      var body = chunk.slice(7, 5 + chunk[3]);
+      var uid = body.slice(6, 6 + body[5]);
+      return {
+        code: chunk[6],
+        body: body,
+        count: body[0],
+        atqa: body.slice(2, 4), // SENS_RES
+        sak: body[4],
+        uid: uid
+      };
+    }]);
+  },
+  authenticate: function authenticate(block, uid, key) {
+    return this.makeTransaction([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_COMMAND_AUTH_A, block].concat([].slice.call(key), [].slice.call(uid)), INFO);
+  },
+  readBlock: function readBlock(block) {
+    return this.makeTransaction([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_COMMAND_READ_16, block], INFO, [parseInfo, parseBlockData]);
+  },
+  writeBlock: function writeBlock(block, chunk) {
+    return this.makeTransaction([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_COMMAND_WRITE_16, block].concat([].slice.call(chunk)), INFO);
+  },
+  readSector: function readSector(sector) {
+    var _this2 = this;
+
+    return new Promise(function (done, fail) {
+      var readBlocksArr = [];
+      for (var block = sector * 4; block < sector * 4 + 3; block++) {
+        readBlocksArr.push(block);
+      }
+
+      series(readBlocksArr, function (next, block, index) {
+        _this2.readBlock(block).then(function (data$$1) {
+          readBlocksArr[index] = data$$1;
+          next();
+        }).catch(function (err) {
+          console.log('!!!');
+          next(err);
+        });
+      }, function (err) {
+        return err ? fail(err) : done(readBlocksArr);
+      });
+    });
+  },
+  writeSector: function writeSector(start, chunk) {}
+};
+
+var Bus = (function (options) {
+  return Object.assign(new _Bus(options), NfcBus);
+});
 
 var data$2 = { TNF_EMPTY: 0,
   TNF_WELL_KNOWN: 1,
@@ -1140,18 +1135,10 @@ var decode$1 = function decode(data) {
 };
 
 /**
- * Creates a JSON representation of a NDEF Record.
- *
- * @tnf 3-bit TNF (Type Name Format) - use one of the constants.TNF_* constants
- * @type byte array, containing zero to 255 bytes, must not be null
- * @id byte array, containing zero to 255 bytes, must not be null
- * @payload byte array, containing zero to (2 ** 32 - 1) bytes, must not be null
- *
- * @returns JSON representation of a NDEF record
- *
- * @see Ndef.textRecord, Ndef.uriRecord and Ndef.mimeMediaRecord for examples
- */
-
+  * shorten a URI with standard prefix
+  *
+  * @returns an array of bytes
+  */
 var record = function record(tnf, type, id, payload, value) {
   if (!tnf) {
     tnf = data$2.TNF_EMPTY;
@@ -1211,14 +1198,11 @@ var textRecord = function textRecord(text, languageCode, id) {
 };
 
 /**
-* Encodes an NDEF Message into bytes that can be written to a NFC tag.
-*
-* @ndefRecords an Array of NDEF Records
-*
-* @returns byte array
-*
-* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
-*/
+ * Helper that creates a NDEF record containing a URI.
+ *
+ * @uri String
+ * @id byte[] (optional)
+ */
 var encodeMessage = function encodeMessage(ndefRecords) {
   var encoded = [],
       tnf_byte = void 0,
@@ -1277,11 +1261,13 @@ var encodeMessage = function encodeMessage(ndefRecords) {
 };
 
 /**
-* Encode NDEF bit flags into a TNF Byte.
+* Decodes an array bytes into an NDEF Message
 *
-* @returns tnf byte
+* @bytes an array bytes read from a NFC tag
 *
-*  See NFC Data Exchange Format (NDEF) Specification Section 3.2 RecordLayout
+* @returns array of NDEF Records
+*
+* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
 */
 var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   if (!value) {
@@ -1312,27 +1298,61 @@ var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   return value;
 };
 
-blink();
+// TODO test with byte[] and string
+
+var usbConsole = true;
+var consoleBus = null;
+function toggleConsole() {
+  usbConsole = !usbConsole;
+  if (usbConsole) {
+    consoleBus = null;
+    USB.removeAllListeners();
+  } else {
+    consoleBus = new Bus({
+      setup: function setup() {
+        USB.on('data', this.parse.bind(this));
+      },
+      read: function read() {},
+      write: function write() {}
+    });
+
+    consoleBus.watch([Buffer.from('/on')], function () {
+      LED1.write(1);
+      USB.write('/on\r\n');
+    });
+
+    consoleBus.watch([Buffer.from('/off')], function () {
+      LED1.write(0);
+      USB.write('/off\r\n');
+    });
+
+    consoleBus.on('error', function (err) {
+      once(LED1, 200);
+    });
+
+    consoleBus.setup();
+  }
+
+  usbConsole ? USB.setConsole(false) : LoopbackA.setConsole(false);
+}
+
+setWatch(toggleConsole, BTN1, {
+  repeat: true,
+  edge: 'rising',
+  debounce: 50
+});
+
+start(LED2);
 
 var encoded = encodeMessage([textRecord('2enhello world!')]);
 
-var wakeup = command([PN532_WAKEUP]);
+var wakeup = command([PN532_COMMAND_WAKEUP]);
 var sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
 
-function rx(data) {
-  var _this = this;
-
-  this._busState.push(data);
-  this._busState.nodes().forEach(function (node) {
-    return _this.parse(node.chunk);
-  });
-}
-
 function setup(done) {
-  var _this2 = this;
-
   Serial1.setup(115200, {
-    rx: B7, tx: B6
+    rx: B7,
+    tx: B6
   });
 
   Serial1.write(wakeup);
@@ -1340,150 +1360,75 @@ function setup(done) {
 
   setTimeout(function () {
     Serial1.read();
-    Serial1.on('data', rx.bind(_this2));
-  }, 1500);
-
-  setTimeout(function () {
-    blink.once(LED1, 20, function () {
+    Serial1.on('data', function (data) {
+      return bus.parse(data);
+    });
+    once(LED1, 20, function () {
       return setTimeout(function () {
-        return blink.once(LED1, 20);
+        return once(LED1, 20);
       }, 200);
     });
-
-    done();
-  }, 2000);
+  }, 50);
 }
 
-var bus = new _Bus({
-  setup: setup, highWaterMark: 64
+var bus = new Bus({
+  setup: setup,
+  read: function read() {},
+  write: function write(chunk) {
+    Serial1.write(chunk);
+  },
+
+  highWaterMark: 64
 });
 
-var schedule = new _Schedule();
+bus.on('error', function (err) {
+  console.error('BusError:', err);
+});
 
-bus.on('error', console.error);
+bus.setup();
 
-schedule.deferred(setup.bind(bus));
+var key = new Uint8Array([].fill(0xff, 0, 6));
 
-var readBlock = function readBlock(uid, key, block) {
-  var auth = function auth(done, fail) {
-    "compiled";
-
-    var AUTH = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_AUTH_A, block].concat(key, uid));
-
-    bus.rx(ack, function (ack$$1) {});
-
-    bus.rx(err, function (err$$1) {
-      console.error(err$$1);
-      fail(err$$1);
-    });
-
-    bus.rx(info, function (frame) {
-      console.log('AUTH SUCCEED', {
-        code: frame[6],
-        body: frame.slice(7, -2)
-      });
-
-      done();
-    });
-
-    Serial1.write(AUTH);
-  };
-
-  var read = function read(done, fail) {
-    console.log('read');
-    var READ = command([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_CMD_READ_16, block]);
-
-    bus.rx(ack, function (ack$$1) {});
-
-    bus.rx(err, function (err$$1) {
-      console.error(err$$1);
-      fail(err$$1);
-    });
-
-    bus.rx(info, function (frame) {
-      var body = frame.slice(8, -2);
-      var data = {
-        block: block,
-        status: frame[7],
-        body: body,
-        length: body.length
-      };
-
-      done(data);
-    });
-
-    Serial1.write(READ);
-  };
-
-  return Promise.resolve().then(function () {
-    return new Promise(auth);
-  }).then(function () {
-    return new Promise(read);
-  });
-};
-
-var readSector = function readSector(uid, key, sector) {
-  return new Promise(function (done, fail) {
-    var readBlocksArr = [];
-    for (var block = sector * 4; block < sector * 4 + 4; block++) {
-      readBlocksArr.push(block);
-    }
-    series(readBlocksArr, function (next, block, index) {
-      readBlock(uid, key, block).then(function (data) {
-        readBlocksArr[index] = data;
-        next();
-      });
-    }, function () {
-      return done(readBlocksArr);
-    });
-  });
-};
-
-var key = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);(function poll() {
-  var uid = void 0;
-
-  schedule.deferred(function (done) {
-    var LIST = command([PN532_COMMAND_INLISTPASSIVETARGET, 1, 0]);
-
-    bus.rx(ack, function () {
-      console.log('ACK');
-    });
-
-    bus.rx(info, function (frame) {
-      var body = frame.slice(7, 5 + frame[3]),
-          uidLength = body[5],
-          _uid = body.slice(6, 6 + uidLength);
-
-      console.log('FOUND', {
-        code: frame[6],
-        body: body,
-        count: body[0],
-        ATQA: body.slice(2, 4), // SENS_RES
-        SAK: body[4],
-        uidLength: uidLength,
-        uid: _uid
-      }['ATQA']);
-
-      uid = _uid;
-
-      done();
-    });
-
-    Serial1.write(LIST);
-  });
-
-  schedule.deferred(function (done, fail) {
-    readSector(uid, key, 0).then(function (data) {
-      console.log(data);
+setTimeout(function () {
+  (function poll() {
+    // console.log(process.memory().free)
+    // console.log(bus._busState.watching.length)
+    Promise.resolve().then(function () {
+      return bus.findTargets(1, 'A');
+    }) // .then(data => { console.log('found card', data.uid); return data })
+    .then(function (data) {
+      LED1.write(true);
       return data;
-    }).then(done).catch(console.error);
-  });
-
-  schedule.deferred(function (done) {
-    setTimeout(function () {
-      console.log(process.memory().free);
-      done();
-      poll();
-    }, 1000);
-  });
-})();
+    })
+    // .then(data => bus.authenticate(4, data.uid, key).then(data => { console.log('auth op 4:', data) }).then(() => bus.authenticate(3, data.uid, key).then(data => { console.log('auth op:', data) })))
+    .then(function (data) {
+      return bus.authenticate(1 * 4, data.uid, key);
+    }) // .then(data => { console.log('auth', data) })
+    // .then(data => bus.writeBlock(4, [1, 3, 6, 4])).then(data => { console.log('write op:', data) })
+    // .then(data => { console.time('reading 2 sector'); return data })
+    .then(function (data) {
+      return bus.readSector(1);
+    }).then(function (data) {
+      LED1.write(false);
+      return data;
+    }) // .then(data => { console.log('sector 2:', data); return data })
+    .then(function (data) {
+      return data.reduce(function (buffer, data) {
+        return [].concat(buffer, [].slice.call(data.chunk, 0));
+      }, []);
+    }).then(console.log)
+    // .then(data => { console.timeEnd('reading 2 sector'); return data })
+    // .then(data => bus.readBlock(4)).then(data => { console.log('block 4:', data) })
+    // .then(data => bus.readBlock(5)).then(data => { console.log('block 5:', data) })
+    // .then(data => bus.readBlock(6)).then(data => { console.log('block 6:', data) })
+    // .then(data => bus.readBlock(7)).then(data => { console.log('block 7:', data) })
+    .catch(function (err) {
+      LED1.write(false);
+      console.error('Error:', err);
+    }).then(function () {
+      setTimeout(function () {
+        poll();
+      }, 500);
+    });
+  })();
+}, 1000);

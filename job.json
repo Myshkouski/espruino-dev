@@ -1,0 +1,29 @@
+{
+  "espruino": {
+    "RESET_BEFORE_SEND": true,
+    "STORE_LINE_NUMBERS": true,
+    "ENV_ON_CONNECT": true,
+    "MODULE_URL": "https://www.espruino.com/modules",
+    "MODULE_EXTENSIONS": ".min.js|.js",
+    "MODULE_AS_FUNCTION": false,
+    "MODULE_PROXY_ENABLED": false,
+    "MODULE_PROXY_URL": "",
+    "MODULE_PROXY_PORT": "",
+    "BAUD_RATE": 9600,
+    "BOARD_JSON_URL": "http://www.espruino.com/json",
+    "COMPILATION": true,
+    "COMPILATION_URL": "http://www.espruino.com:32766",
+    "MINIFICATION_LEVEL": "",
+    "MODULE_MINIFICATION_LEVEL": "ESPRIMA",
+    "MINIFICATION_Mangle": true,
+    "MINIFICATION_Unreachable": true,
+    "MINIFICATION_Unused": true,
+    "MINIFICATION_Literal": true,
+    "MINIFICATION_DeadCode": true,
+    "SAVE_ON_SEND": 0,
+    "SET_TIME_ON_WRITE": true,
+    "SERIAL_THROTTLE_SEND": false
+  },
+  "ports": [],
+  "config": {}
+}

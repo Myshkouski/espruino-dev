@@ -13,6 +13,9 @@ import legacy from 'rollup-plugin-legacy'
 import analyze from 'rollup-analyzer-plugin'
 import defaults from 'lodash.defaultsdeep'
 import includePaths from 'rollup-plugin-includepaths'
+import progress from 'rollup-plugin-progress'
+import filesize from 'rollup-plugin-filesize'
+import typeOf from 'rollup-plugin-inline-typeof'
 
 const __approot = path.resolve(__dirname, '../')
 const __lib = path.resolve(__approot, 'lib')
@@ -30,7 +33,7 @@ const espPolyfills = {
     'Object': path.resolve(__globals, 'object.js'),
     'Array': path.resolve(__globals, 'array.js'),
     'Promise': path.resolve(__globals, 'promise.js'),
-    'Buffer': path.resolve(__globals, 'buffer/index.js'),
+    'Buffer': path.resolve(__globals, 'buffer.js'),
     //'process': path.resolve(__globals, 'process.js'),
     'console': path.resolve(__globals, 'console.js')
   }
@@ -101,7 +104,7 @@ const resolveOptions = {
     // order makes sense!
     moduleDirectory: ['lib', 'helpers', 'node_modules']
   },
-  extensions: ['.js', '.json', '.yaml']
+  extensions: ['.js', '.json', '.yml']
 }
 
 const commonjsOptions = {
@@ -110,9 +113,16 @@ const commonjsOptions = {
 
 const uglifyOptions = {
   sourceMap: true,
-  //toplevel: true,
+  toplevel: true,
+  compress: {
+    unsafe: true,
+    unsafe_proto: true,
+    passes: 3
+  },
   mangle: {
-    properties: false
+    // properties: {
+    //   regex: /^_/
+    // }
   }
 }
 
@@ -135,7 +145,13 @@ export default [
 
       replace(replaceInstanceOf),
 
-      yaml()
+      // typeOf(),
+
+      yaml(),
+
+
+
+      filesize()
     ]
   },
 
@@ -161,9 +177,15 @@ export default [
 
       replace(replaceInstanceOf),
 
+      // typeOf(),
+
       yaml(),
 
-      babel(babelOptions)
+      babel(babelOptions),
+
+      eslint({}),
+
+      filesize()
     ]
   },
 
@@ -190,6 +212,8 @@ export default [
 
       replace(replaceInstanceOf),
 
+      // typeOf(),
+
       yaml(),
 
       babel(babelOptions),
@@ -199,7 +223,11 @@ export default [
       analyze({
         limit: 5,
         root: __approot
-      })
+      }),
+
+
+
+      filesize()
     ]
   }
-]
+].reverse()

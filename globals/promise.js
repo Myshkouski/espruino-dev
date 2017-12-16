@@ -178,35 +178,40 @@
 //     return this.then(null, onRejection)
 //   }
 // }
-//
+
 // Promise.all = function(promises) {
-//   if (!(promises instanceof Array))
+//   if (!(promises instanceof Array)) {
 //     throw new TypeError('You must pass an array to Promise.all().')
+//   }
 //
 //   return new Promise((resolve, reject) => {
 //     var results = []
 //     var remaining = 0
 //
-//     function resolver(index){
+//     function resolver(index) {
 //       remaining++
-//       return function(value){
+//       return function(value) {
 //         results[index] = value
-//         if (!--remaining)
+//         if (!--remaining) {
 //           resolve(results)
+//         }
 //       }
 //     }
 //
 //     for (var i = 0, promise; i < promises.length; i++) {
 //       promise = promises[i]
 //
-//       if (promise && typeof promise.then === 'function')
+//       if (promise && typeof promise.then === 'function') {
 //         promise.then(resolver(i), reject)
-//       else
+//       }
+//       else {
 //         results[i] = promise
+//       }
 //     }
 //
-//     if (!remaining)
+//     if (!remaining) {
 //       resolve(results)
+//     }
 //   })
 // }
 

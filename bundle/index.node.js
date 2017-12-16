@@ -1,444 +1,30 @@
 'use strict';
 
-function BufferState(options = {}) {
-  Object.assign(this, {
-		_buffer: [],
-		length: 0
-	}, options);
-}
-
-BufferState.prototype = {
-  push(chunk) {
-    const node = {
-  		chunk: Buffer.from(chunk),
-  		next: null
-  	};
-
-    if(this._buffer.length) {
-      this._buffer[this._buffer.length - 1].next = node;
-    }
-
-    this._buffer.push(node);
-    this.length += node.chunk.length;
-
-    return this.length
-  },
-
-  unshift(chunk) {
-    const node = {
-  		chunk: Buffer.from(chunk),
-      encoding: 'binary',
-  		next: null
-  	};
-
-    if(this._buffer.length) {
-      node.next = this._buffer[0];
-    }
-
-    this._buffer.unshift(node);
-    this.length += node.chunk.length;
-
-    return this.length
-  },
-
-  nodes(count) {
-    const nodes = this._buffer.splice(0, count);
-    nodes.forEach(node => this.length -= node.chunk.length);
-
-    return nodes
-  },
-
-  at(index) {
-    if(index >= this.length || index < 0) {
-      return
-    }
-
-    for(let nodeIndex = 0; nodeIndex < this._buffer.length; nodeIndex ++) {
-      if(index < this._buffer[nodeIndex].chunk.length) {
-        return {
-          index,
-          nodeIndex
-        }
-      }
-
-      index -= this._buffer[nodeIndex].chunk.length;
-    }
-  },
-
-  buffer(length) {
-    if(length === undefined) {
-      length = this.length;
-    }
-
-    if(!this.length) {
-      return Buffer.from([])
-    }
-
-    if(length > this.length) {
-      length = this.length;
-    }
-
-    let to;
-
-    if(length) {
-      to = this.at(length);
-    }
-
-    if(!to) {
-      to = {
-        index: this.length - 1,
-        nodeIndex: this._buffer.length - 1
-      };
-    }
-
-    const buffer = Buffer.from([], 0, length);
-
-    const offset = this.nodes(to.nodeIndex).reduce((offset, node) => {
-      buffer.set(node.chunk, offset);
-      return offset += node.chunk.length
-    }, 0);
-
-    if(offset < length) {
-      const node = this.nodes(1).shift();
-
-      buffer.set(node.chunk.slice(0, length - offset), offset);
-      node.chunk = node.chunk.slice(length - offset);
-
-      this.unshift(node);
-    }
-
-    return buffer
-
-    // return from.nodeIndex == to.nodeIndex
-    //   ? this._buffer[from.nodeIndex].chunk.slice(from.index, to.index)
-    //   : Buffer.concat([
-    //       this._buffer[from.nodeIndex].chunk.slice(from.index),
-    //       ...this._buffer.slice(1 + from.nodeIndex, to.nodeIndex).map(node => node.chunk),
-    //       this._buffer[to.nodeIndex].chunk.slice(0, to.index)
-    //     ])
-  }
-};
-
-function series(arr, cb, done) {
-  let i = 0;(function next(res) {
-    if (res !== undefined || i >= arr.length) {
-      done && done(res);
-    }
-    else {
-      setImmediate(() => cb(next, arr[i], i++, arr));
-    }
-  })();
-}
-
-//import { Writable } from 'stream'
-//import Schedule from 'schedule'
-function _parse(chunk) {
-  const { incoming, watching, frame } = this._busState;
-
-  let currentChunkIndex = 0,
-      currentIncomingWatcherIndex = 0,
-      incomingIndex = 0,
-      isEqual = false;
-
-  if(!watching.length) {
-    this.emit('error', new Error({
-      msg: 'Unexpected incoming data',
-      data: chunk
-    }));
-  }
-  else {
-    for(;currentChunkIndex < chunk.length; currentChunkIndex ++) {
-      frame.push(chunk[currentChunkIndex]);
-
-      if(!incoming.length) {
-        for(let watchingIndex in watching) {
-          try {
-            incoming.push({
-              patterns: watching[watchingIndex].patterns,
-              callback: watching[watchingIndex].callback,
-              currentPattern: watching[watchingIndex].patterns[0] instanceof Function ? watching[watchingIndex].patterns[0]([]) : watching[watchingIndex].patterns[0],
-              arrayOffset: 0,
-              patternIndex: 0,
-              byteIndex: 0,
-              length: 0
-            });
-          } catch(err) {
-            this.emit('error', err);
-          }
-        }
-      }
-
-      for(incomingIndex = 0; incomingIndex < incoming.length;) {
-        const incomingI = incoming[incomingIndex],
-              expected = incomingI.currentPattern[incomingI.byteIndex];
-
-        if(expected === undefined || expected === chunk[currentChunkIndex]) {
-          isEqual = true;
-
-          incomingI.byteIndex ++;
-        }
-        else if(expected instanceof Array) {
-          isEqual = true;
-
-          if(incomingI.arrayOffset <= 0 && expected[0] > 0) {
-            incomingI.arrayOffset = expected[0];
-          }
-
-          if(--incomingI.arrayOffset > 0) {
-            continue
-          }
-          else {
-            incomingI.byteIndex ++;
-          }
-        }
-        else if(expected instanceof Function) {
-          try {
-            isEqual = !!expected.call(this, chunk[currentChunkIndex], incomingI.length, frame.slice(-incomingI.length - 1));
-            incomingI.byteIndex ++;
-          } catch(err) {
-            this.emit('error', err);
-            isEqual = false;
-          }
-        }
-        else {
-          isEqual = false;
-        }
-
-        if(isEqual) {
-          incomingI.length ++;
-
-          if(incomingI.byteIndex >= incomingI.currentPattern.length) {
-            if(++ incomingI.patternIndex >= incomingI.patterns.length) {
-              try {
-                incomingI.callback.call(
-                  this,
-                  frame.splice(-incomingI.length),
-                  incomingI.pattern
-                );
-              } catch(err) {
-                this.emit('error', err);
-              }
-
-              incoming.splice(0);
-              //break
-            }
-            else {
-              const nextPattern = incomingI.patterns[incomingI.patternIndex];
-              incomingI.byteIndex = 0;
-              try {
-                if(nextPattern instanceof Function) {
-                  incomingI.currentPattern = nextPattern(frame.slice(-incomingI.length));
-                }
-                else {
-                  incomingI.currentPattern = nextPattern;
-                }
-                incomingIndex ++;
-              } catch(err) {
-                this.emit('error', err);
-                incoming.splice(incomingIndex, 1);
-              }
-            }
-          }
-          else {
-            incomingIndex ++;
-          }
-        }
-        else {
-          incoming.splice(incomingIndex, 1);
-        }
-      }
-
-      if(!incoming.length && frame.length) {
-        this.emit('error', {
-          msg: 'Unparsed chunk',
-          data: frame.splice(0)
-        });
-        /*
-        if(!isChunkCorrupted) {
-          isChunkCorrupted = true
-          setImmediate(() => {
-            isChunkCorrupted = false
-            this.emit('error', {
-              msg: 'Unparsed chunk',
-              data: frame.splice(0)
-            })
-          })
-        }*/
-      }
-    }
-  }
-}
-
-function _Bus(options = {}) {
-  this._setup = options.setup.bind(this);
-  this.options = {
-    highWaterMark: options.highWaterMark || 64
-  };
-
-  this._busState = new BufferState({
-    watching: [],
-    incoming: [],
-    frame: [],
-    configured: false
-  });
-}
-
-_Bus.prototype = {
-  setup () {
-    if(this._busState.configured)
-      return Promise.reject('already configured')
-
-    this._busState.configured = true;
-    return this._setup.apply(this, arguments)
-  },
-
-  parse(chunk) {
-    const highWaterMark = this.options.highWaterMark;
-
-    if(chunk.length > highWaterMark) {
-      const chunks = [];
-      for(let bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
-        const subchunk = chunk.slice(offset, offset += highWaterMark);
-        chunks.push(subchunk);
-      }
-
-      series(chunks, (next, subchunk) => {
-        _parse.call(this, subchunk);
-        next();
-      });
-    }
-    else {
-      _parse.apply(this, arguments);
-    }
-  },
-
-  watch (patterns, callback) {
-    const watcher = {
-      patterns,
-      callback
-    };
-
-    this._busState.watching.push(watcher);
-
-    return watcher
-  },
-
-  unwatch (watcher) {
-    if(watcher) {
-      const index = this._busState.watching.indexOf(watcher);
-
-      if(index >= 0)
-        this._busState.watching.splice(index, 1);
-    } else {
-      this._busState.watching.splice(0);
-    }
-
-    return this
-  },
-
-  /**
-    * @TODO - Proper unwatch(): delete all previously RXed watchers
-    */
-  rx(patterns, cb) {
-    const watcher = this.watch(patterns, frame => {
-      //this.unwatch(watcher)
-      const index = this._busState.watching.indexOf(watcher);
-
-      if(index >= 0)
-        this._busState.watching.splice(0, index + 1);
-
-      cb(frame);
-    });
-
-    return this
-  },
-
-  tx(binary, options = {}) {
-    console.log('tx');
-    if('timeout' in options) {
-      return new Promise((done, fail) => {
-        setTimeout(() => {
-          this.write(binary);
-          done();
-        }, options.timeout);
-      })
-    }
-
-    this.write(binary);
-
-    return Promise.resolve()
-  },
-
-  reset () {
-    this._busState.frame.splice(0);
-    this._busState.incoming.splice(0);
-    return this
-  }
-};
-
-function _Schedule() {
-  this.pending = Promise.resolve(null);
-}
-
-_Schedule.prototype = {
-  immediate(task) {
-    this.pending = Promise.all([
-      this.pending,
-      new Promise((done, fail) => {
-        task(done, fail);
-      }).catch(err => this.emit('error', err))
-    ]);
-
-    return this
-  },
-
-  deferred(task) {
-    this.pending = this.pending
-      .then(r => new Promise((done, fail) => {
-        task(done, fail);
-      }))
-      .catch(err => this.emit('error', err));
-
-    return this
-  }
-};
-
 let status = false;
-function blink(mode) {
-  if(mode === undefined)
-    mode = !status;
+const defaultInterval = 20;
+const defaultLed = LED2;
 
-  !mode
-    ? blink.stop()
-    : blink.start();
+const once = ( led, on, cb ) => {
+  led.write( 1 );
+  setTimeout( () => {
+    led.write( 0 );
+    cb && cb();
+  }, on || defaultInterval );
+};
 
-  return !!status
-}
-
-blink.start = () => {
-  if(!status) {
+const start = led => {
+  if ( !led ) {
+    led = defaultLed;
+  }
+  if ( !status ) {
     status = true;
 
-    blink.once(LED2, 20, function cb() {
-      if(status) {
-        setTimeout(() => blink.once(LED2, 20, cb), 980);
+    once( led, defaultInterval, function cb() {
+      if ( status ) {
+        setTimeout( () => once( led, defaultInterval, cb ), 1000 - defaultInterval );
       }
-    });
+    } );
   }
-};
-
-blink.stop = () => {
-  if(status) {
-    status = false;
-  }
-};
-
-blink.once = (led, on = 20, cb) => {
-  led.write(true);
-  setTimeout(() => {
-    led.write(false);
-    cb && cb();
-  }, on);
 };
 
 var data = { PN532_PREAMBLE:0,
@@ -479,7 +65,7 @@ var data = { PN532_PREAMBLE:0,
   PN532_COMMAND_TGGETINITIATORCOMMAND:136,
   PN532_COMMAND_TGRESPONSETOINITIATOR:144,
   PN532_COMMAND_TGGETTARGETSTATUS:138,
-  PN532_WAKEUP:85,
+  PN532_COMMAND_WAKEUP:85,
   PN532_SPI_STATREAD:2,
   PN532_SPI_DATAWRITE:1,
   PN532_SPI_DATAREAD:3,
@@ -489,16 +75,15 @@ var data = { PN532_PREAMBLE:0,
   PN532_I2C_BUSY:0,
   PN532_I2C_READY:1,
   PN532_I2C_READYTIMEOUT:20,
-  PN532_MIFARE_ISO14443A:0,
-  MIFARE_CMD_AUTH_A:96,
-  MIFARE_CMD_AUTH_B:97,
-  MIFARE_CMD_READ_16:48,
-  MIFARE_CMD_WRITE_4:162,
-  MIFARE_CMD_WRITE_16:160,
-  MIFARE_CMD_TRANSFER:176,
-  MIFARE_CMD_DECREMENT:192,
-  MIFARE_CMD_INCREMENT:193,
-  MIFARE_CMD_RESTORE:194,
+  MIFARE_COMMAND_AUTH_A:96,
+  MIFARE_COMMAND_AUTH_B:97,
+  MIFARE_COMMAND_READ_16:48,
+  MIFARE_COMMAND_WRITE_4:162,
+  MIFARE_COMMAND_WRITE_16:160,
+  MIFARE_COMMAND_TRANSFER:176,
+  MIFARE_COMMAND_DECREMENT:192,
+  MIFARE_COMMAND_INCREMENT:193,
+  MIFARE_COMMAND_RESTORE:194,
   NDEF_URIPREFIX_NONE:0,
   NDEF_URIPREFIX_HTTP_WWWDOT:1,
   NDEF_URIPREFIX_HTTPS_WWWDOT:2,
@@ -552,7 +137,7 @@ var data = { PN532_PREAMBLE:0,
   PN532_BRTY_424KBPS:2,
   PN532_BRTY_JEWEL:4,
   NFC_WAIT_TIME:30,
-  NFC_CMD_BUF_LEN:64,
+  NFC_COMMAND_BUF_LEN:64,
   NFC_FRAME_ID_INDEX:6 };
 
 var PN532_PREAMBLE = data.PN532_PREAMBLE;
@@ -593,7 +178,7 @@ var PN532_COMMAND_INDATAEXCHANGE = data.PN532_COMMAND_INDATAEXCHANGE;
 
 
 
-var PN532_WAKEUP = data.PN532_WAKEUP;
+var PN532_COMMAND_WAKEUP = data.PN532_COMMAND_WAKEUP;
 
 
 
@@ -603,12 +188,11 @@ var PN532_WAKEUP = data.PN532_WAKEUP;
 
 
 
+var MIFARE_COMMAND_AUTH_A = data.MIFARE_COMMAND_AUTH_A;
 
-var MIFARE_CMD_AUTH_A = data.MIFARE_CMD_AUTH_A;
+var MIFARE_COMMAND_READ_16 = data.MIFARE_COMMAND_READ_16;
 
-var MIFARE_CMD_READ_16 = data.MIFARE_CMD_READ_16;
-
-
+var MIFARE_COMMAND_WRITE_16 = data.MIFARE_COMMAND_WRITE_16;
 
 
 
@@ -658,20 +242,22 @@ var MIFARE_CMD_READ_16 = data.MIFARE_CMD_READ_16;
 
 var PN532_SAM_NORMAL_MODE = data.PN532_SAM_NORMAL_MODE;
 
-const check = values => !(0xff & (-values.reduce((sum, value) => sum + value, 0x00)));
+
+
+var PN532_BRTY_ISO14443A = data.PN532_BRTY_ISO14443A;
+var PN532_BRTY_ISO14443B = data.PN532_BRTY_ISO14443B;
+
+const check = values => !(0xff & (-values.reduce((sum, value) => sum + value, 0)));
 
 const LCS_std = (byte, length, frame) => check(frame.slice(-2));
 
 const CHECKSUM_std = (byte, length, frame) => check(frame.slice(5));
 
 const BODY_std = frame => {
-  const arr = [];
-  for(let i = 0; i < frame[3] - 1; i ++)
-    arr.push(undefined);
-  return arr
+  return [[frame[3] - 1]]
 };
 
-const info = [
+const INFO = [
   [PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS_std, PN532_PN532_TO_HOST],
   BODY_std,
   [CHECKSUM_std, PN532_POSTAMBLE]
@@ -679,15 +265,17 @@ const info = [
 
 
 
-const err = [
+const ERR = [
   [PN532_PREAMBLE, PN532_STARTCODE1 , PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM_std, PN532_POSTAMBLE]
 ];
 
-const ack = [
+const ACK = [
   new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE])
 ];
 
-
+const NACK = [
+  new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff, 0x00, PN532_POSTAMBLE])
+];
 
 const command = command =>
   new Uint8ClampedArray([
@@ -702,6 +290,642 @@ const command = command =>
     0xff & (-command.reduce((checksum, byte) => checksum + byte, PN532_HOST_TO_PN532)),
     PN532_POSTAMBLE
   ]);
+
+function BufferState(options = {}) {
+  Object.assign(this, {
+		_buffer: [],
+		length: 0
+	}, options);
+}
+
+BufferState.prototype = {
+  push(chunk) {
+    if(chunk.length) {
+      const node = {
+    		chunk: Buffer.from(chunk),
+        encoding: 'binary',
+    		next: null
+    	};
+
+      if(this._buffer.length) {
+        this._buffer[this._buffer.length - 1].next = node;
+      }
+
+      this._buffer.push(node);
+      this.length += node.chunk.length;
+    }
+
+    return this.length
+  },
+
+  unshift(chunk) {
+    const node = {
+  		chunk: Buffer.from(chunk),
+      encoding: 'binary',
+  		next: null
+  	};
+
+    if(this._buffer.length) {
+      node.next = this._buffer[0];
+    }
+
+    this._buffer.unshift(node);
+    this.length += node.chunk.length;
+
+    return this.length
+  },
+
+  nodes(count) {
+    const nodes = this._buffer.splice(0, count);
+    nodes.forEach(node => this.length -= node.chunk.length);
+
+    return nodes
+  },
+
+  at(index) {
+    if(index >= this.length || index < 0) {
+      return
+    }
+
+    for(let nodeIndex = 0; nodeIndex < this._buffer.length; nodeIndex ++) {
+      const chunk = this._buffer[nodeIndex].chunk;
+      if(index < chunk.length) {
+        return {
+          index,
+          nodeIndex,
+          value: chunk[index]
+        }
+      }
+
+      index -= chunk.length;
+    }
+  },
+
+  for(from, to, callee) {
+    const firstNode = this._buffer[from.nodeIndex];
+    for(let index = from.nodeIndex; index < firstNode.chunk.length; index ++) {
+      callee.call(this, firstNode.chunk[index]);
+    }
+
+    for(let nodeIndex = 1 + from.nodeIndex; nodeIndex < to.nodeIndex; nodeIndex ++) {
+      const node = this._buffer[nodeIndex];
+      for(let index = 0; index < node.chunk.length; index ++) {
+        callee.call(this, node.chunk[index]);
+      }
+    }
+
+    if(from.nodeIndex < to.nodeIndex) {
+      const lastNode = this._buffer[to.nodeIndex];
+      for(let index = 0; index <= to.index; index ++) {
+        callee.call(this, lastNode.chunk[index]);
+      }
+    }
+  },
+
+  slice(length) {
+    if(length === undefined) {
+      length = this.length;
+    }
+
+    if(!length) {
+      return Buffer.from([])
+    }
+
+    if(length > this.length) {
+      length = this.length;
+    }
+
+    let to;
+
+    if(length) {
+      to = this.at(length);
+    }
+
+    if(!to) {
+      to = {
+        index: this.length - 1,
+        nodeIndex: this._buffer.length - 1
+      };
+    }
+
+    const buffer = Buffer.from([], 0, length);
+
+    const offset = this._buffer.slice(0, to.nodeIndex).reduce((offset, node) => {
+      buffer.set(node.chunk, offset);
+      return offset + node.chunk.length
+    }, 0);
+
+    if(offset < length) {
+      const node = this._buffer[to.nodeIndex];
+
+      buffer.set(node.chunk.slice(0, length - offset), offset);
+    }
+
+    return buffer
+  },
+
+  buffer(length) {
+    if(length === undefined) {
+      length = this.length;
+    }
+
+    if(!length) {
+      return Buffer.from([])
+    }
+
+    if(length > this.length) {
+      length = this.length;
+    }
+
+    let to;
+
+    if(length) {
+      // console.time('at')
+      to = this.at(length);
+      // console.timeEnd('at')
+    }
+
+    if(!to) {
+      to = {
+        index: this.length - 1,
+        nodeIndex: this._buffer.length - 1
+      };
+    }
+    // console.time('from')
+    const buffer = Buffer.from([], 0, length);
+    // console.timeEnd('from')
+    // console.time('offset')
+
+    // console.timeEnd('buffer')
+    const offset = this.nodes(to.nodeIndex).reduce((offset, node) => {
+      buffer.set(node.chunk, offset);
+      return offset + node.chunk.length
+    }, 0);
+    // console.timeEnd('offset')
+    if(offset < length) {
+      const node = this.nodes(1)[0];
+
+      buffer.set(node.chunk.slice(0, length - offset), offset);
+      node.chunk = node.chunk.slice(length - offset);
+
+      this.unshift(node.chunk);
+    }
+
+    return buffer
+
+    // return from.nodeIndex == to.nodeIndex
+    //   ? this._buffer[from.nodeIndex].chunk.slice(from.index, to.index)
+    //   : Buffer.concat([
+    //       this._buffer[from.nodeIndex].chunk.slice(from.index),
+    //       ...this._buffer.slice(1 + from.nodeIndex, to.nodeIndex).map(node => node.chunk),
+    //       this._buffer[to.nodeIndex].chunk.slice(0, to.index)
+    //     ])
+  }
+};
+
+function series( arr, cb, done ) {
+  let i = 0;
+  let aborted = false;
+  ( function next( res ) {
+    if ( !aborted ) {
+      if ( typeof res !== 'undefined' || i >= arr.length ) {
+        done && done( res );
+      } else {
+        setImmediate( () => {
+          try {
+            cb( next, arr[ i ], i++, arr );
+          } catch ( err ) {
+            next( err );
+            aborted = true;
+          }
+        } );
+      }
+    }
+  } )();
+}
+
+//import { Writable } from 'stream'
+const DEFAULT_HIGHWATERMARK = 64;
+// const defaultWatcher = {
+//   cache: {},
+//   currentPattern: null,
+//   arrayOffset: 0,
+//   patternIndex: 0,
+//   byteIndex: 0,
+//   length: 0,
+//   active: false
+// }
+
+function _resetWatcher( watcher ) {
+  watcher.currentPattern = null;
+  watcher.arrayOffset =
+    watcher.patternIndex =
+    watcher.byteIndex =
+    watcher.length = 0;
+  watcher.active = false;
+  return watcher
+
+  // return Object.assign(watcher, defaultWatcher)
+}
+
+function _parse() {
+  const {
+    watching,
+    frame,
+    _buffer
+  } = this._busState;
+
+  if ( !watching.length ) {
+    this.emit( 'error', {
+      msg: 'Unexpected watching data',
+      data: this._busState.buffer()
+    } );
+    return
+  }
+
+  if ( this._busState.nodeIndex < 0 ) {
+    this._busState.nodeIndex = 0;
+  }
+
+  for ( ; this._busState.nodeIndex < _buffer.length; this._busState.nodeIndex++ ) {
+    const {
+      chunk
+    } = _buffer[ this._busState.nodeIndex ];
+    let currentChunkIndex = currentIncomingWatcherIndex = watcherIndex = 0,
+      isEqual = isChunkCorrupted = false;
+
+    for ( ; currentChunkIndex < chunk.length; currentChunkIndex++ ) {
+      if ( !this._busState.active ) {
+        this._busState.active = this._busState.watching.reduce( ( active, watcher ) => {
+          const {
+            patterns
+          } = watcher;
+          try {
+            watcher.currentPattern = typeof patterns[ 0 ] == 'function' ? patterns[ 0 ]( Buffer.from( [] ) ) : patterns[ 0 ], watcher.active = true;
+            return active + 1
+          } catch ( err ) {
+            this.emit( 'error', err );
+            return active
+          }
+        }, 0 );
+      }
+
+      const byte = chunk[ currentChunkIndex ];
+
+      for ( watcherIndex = 0; watcherIndex < watching.length; watcherIndex++, isEqual = false ) {
+        const watcher = watching[ watcherIndex ];
+
+        if ( !watcher.active ) {
+          continue
+        }
+
+        const expected = watcher.currentPattern[ watcher.byteIndex ];
+
+        // console.log('current watching:', watcher.currentPattern)
+        // console.log('current chunk:', chunk)
+        // console.log('byte:', byte)
+        // console.log('expected:', expected)
+
+        if ( expected === undefined || expected === byte ) {
+          isEqual = true;
+        } else if ( Array.isArray( expected ) ) {
+          if ( watcher.arrayOffset <= 0 && expected[ 0 ] > 0 ) {
+            watcher.arrayOffset = expected[ 0 ];
+          }
+
+          if ( --watcher.arrayOffset > 0 ) {
+            watcher.length++;
+              continue
+          }
+
+          isEqual = true;
+        } else if ( typeof expected == 'function' ) {
+          try {
+            isEqual = !!expected.call( this, byte, watcher.length, this._busState.slice( 1 + watcher.length ) );
+          } catch ( err ) {
+            isEqual = false;
+            this.emit( 'error', err );
+          }
+        }
+
+        if ( isEqual ) {
+          watcher.length++;
+
+            if ( ++watcher.byteIndex >= watcher.currentPattern.length ) {
+              if ( ++watcher.patternIndex >= watcher.patterns.length ) {
+                console.time( 'buffer' );
+                // console.log(watcher.callback)
+                const chunk = this._busState.buffer( watcher.length );
+                console.timeEnd( 'buffer' );
+                this._busState.nodeIndex = -1;
+                try {
+                  console.time( 'cb' );
+                  watcher.callback(
+                    chunk,
+                    // frame.splice(-watcher.length),
+                    watcher.pattern
+                  );
+                  console.timeEnd( 'cb' );
+                } catch ( err ) {
+                  this.emit( 'error', err );
+                }
+                // this._busState.watching = []
+                console.time( 'reset' );
+                watching.forEach( _resetWatcher );
+                this._busState.active = 0;
+                console.timeEnd( 'reset' );
+              } else {
+                // console.time('next pattern')
+                const nextPattern = watcher.patterns[ watcher.patternIndex ];
+                watcher.byteIndex = 0;
+
+                try {
+                  if ( typeof nextPattern == 'function' ) {
+                    watcher.currentPattern = nextPattern.call( this, this._busState.slice( watcher.length ) );
+                  } else {
+                    watcher.currentPattern = nextPattern;
+                  }
+                } catch ( err ) {
+                  _resetWatcher( watcher );
+                  this._busState.active--;
+
+                    this.emit( 'error', err );
+                }
+                // console.timeEnd('next pattern')
+              }
+            }
+        } else {
+          _resetWatcher( watcher );
+          this._busState.active--;
+
+            if ( !watching.length && this._busState.length ) {
+              this.emit( 'error', {
+                msg: 'Unparsed chunk',
+                data: this._busState.buffer() // frame.splice(0)
+              } );
+              /*
+              if(!isChunkCorrupted) {
+                isChunkCorrupted = true
+                setImmediate(() => {
+                  isChunkCorrupted = false
+                  this.emit('error', {
+                    msg: 'Unparsed chunk',
+                    data: frame.splice(0)
+                  })
+                })
+              }*/
+            }
+        }
+
+        // console.timeEnd('isEqual')
+      }
+    }
+  }
+}
+
+function _Bus( options = {} ) {
+  this._setup = options.setup.bind( this );
+  this._read = options.read.bind( this );
+  this._write = options.write.bind( this );
+
+  this.options = {
+    highWaterMark: options.highWaterMark || DEFAULT_HIGHWATERMARK
+  };
+
+  this._busState = new BufferState( {
+    watching: [],
+    active: 0,
+    nodeIndex: 0,
+    configured: false,
+    ticker: false
+  } );
+}
+
+_Bus.prototype = {
+  setup() {
+    if ( this._busState.configured ) {
+      return Promise.reject( 'already configured' )
+    }
+
+    this._busState.configured = true;
+    return this._setup.apply( this, arguments )
+  },
+
+  parse( chunk ) {
+    this._busState.push( chunk );
+
+    if ( !this._busState.ticker ) {
+      this._busState.ticker = true;
+      setImmediate( () => {
+        this._busState.ticker = false;
+        _parse.call( this );
+      } );
+    }
+    // const highWaterMark = this.options.highWaterMark,
+    //       parse = _parse.bind(this)
+    //
+    // if(chunk.length > highWaterMark) {
+    //   const chunks = []
+    //   let subchunkIndex = 0
+    //
+    //   for(let bytesLeft = chunk.length, offset = 0; bytesLeft > 0; bytesLeft -= highWaterMark) {
+    //     const subchunk = chunk.slice(offset, offset += highWaterMark)
+    //     chunks.push(subchunk)
+    //   }
+    //
+    //   series(chunks, (next, subchunk) => {
+    //     parse(subchunk)
+    //     next()
+    //   })
+    // }
+    // else {
+    //   parse(chunk)
+    // }
+  },
+
+  watch( patterns, cb ) {
+    const watcher = _resetWatcher( {
+      patterns,
+      callback: cb.bind( this )
+    } );
+
+    this._busState.watching.push( watcher );
+
+    return watcher
+  },
+
+  unwatch( watcher ) {
+    if ( watcher ) {
+      const index = this._busState.watching.indexOf( watcher );
+
+      if ( index >= 0 ) {
+        this._busState.watching.splice( index, 1 );
+      }
+    } else {
+      this._busState.watching.splice( 0 );
+    }
+
+    return this
+  },
+
+  /**
+    @TODO Promise interface
+  */
+
+  rx( patterns, cb ) {
+    const watcher = this.watch( patterns, cb );
+    this._read();
+    return watcher
+  },
+
+  tx( binary, options = {} ) {
+    if ( 'timeout' in options ) {
+      setTimeout( () => {
+        this._write( binary );
+      }, options.timeout );
+    } else {
+      this._write( binary );
+    }
+
+    return this
+  },
+
+  reset() {
+    this._busState.watching.splice( 0 );
+    return this
+  }
+};
+
+const parseInfo = chunk => {
+  return {
+    raw: chunk,
+    code: chunk[ 6 ],
+    body: Buffer.from( chunk.slice( 7, 5 + chunk[ 3 ] ) )
+  }
+};
+
+const parseBlockData = data$$1 => {
+  if ( data$$1.body.length == 1 ) {
+    throw {
+      cmd: data$$1.code,
+      errCode: data$$1.body[ 0 ]
+    }
+  } else {
+    return {
+      chunk: data$$1.body.slice( 1 )
+    }
+  }
+};
+
+const NfcBus = {
+  makeTransaction( cmd, info, parsers ) {
+    return new Promise( ( done, fail ) => {
+        // Don't be silly again - info frame refers to index from beginning, i.e. to ACK
+        // this.rx([...ACK, ...info], chunk => done((parsers || [sliceAck, parseInfo]).reduce((data, parse) => parse(data), chunk)))
+        this.rx( ACK, () => {
+          this.rx( info, chunk => done( ( parsers || [ parseInfo ] )
+            .reduce( ( data$$1, parse ) => parse( data$$1 ), chunk ) ) );
+        } );
+
+        this.rx( NACK, fail );
+        this.rx( ERR, fail );
+
+        this.tx( command( cmd ) );
+      } )
+      .catch( err => {
+        this.unwatch();
+        throw err
+      } )
+      .then( data$$1 => {
+        this.unwatch();
+        return data$$1
+      } )
+  },
+
+  findTargets( count, type ) {
+    if ( type == 'A' ) {
+      type = PN532_BRTY_ISO14443A;
+    } else if ( type == 'B' ) {
+      type = PN532_BRTY_ISO14443B;
+    } else {
+      throw new Error( 'Unknown ISO14443 type:', type )
+    }
+
+    return this.makeTransaction( [
+      PN532_COMMAND_INLISTPASSIVETARGET,
+      count,
+      type
+    ], INFO, [ chunk => {
+      const body = chunk.slice( 7, 5 + chunk[ 3 ] );
+      const uid = body.slice( 6, 6 + body[ 5 ] );
+      return {
+        code: chunk[ 6 ],
+        body,
+        count: body[ 0 ],
+        atqa: body.slice( 2, 4 ), // SENS_RES
+        sak: body[ 4 ],
+        uid
+      }
+    } ] )
+  },
+
+  authenticate( block, uid, key ) {
+    return this.makeTransaction( [
+      PN532_COMMAND_INDATAEXCHANGE,
+      1,
+      MIFARE_COMMAND_AUTH_A,
+      block,
+      ...[].slice.call( key ),
+      ...[].slice.call( uid )
+    ], INFO )
+  },
+
+  readBlock( block ) {
+    return this.makeTransaction( [
+      PN532_COMMAND_INDATAEXCHANGE,
+      1,
+      MIFARE_COMMAND_READ_16,
+      block
+    ], INFO, [ parseInfo, parseBlockData ] )
+  },
+
+  writeBlock( block, chunk ) {
+    return this.makeTransaction( [
+      PN532_COMMAND_INDATAEXCHANGE,
+      1,
+      MIFARE_COMMAND_WRITE_16,
+      block,
+      ...[].slice.call( chunk )
+    ], INFO )
+  },
+
+  readSector( sector ) {
+    return new Promise( ( done, fail ) => {
+      const readBlocksArr = [];
+      for ( let block = sector * 4; block < sector * 4 + 3; block++ ) {
+        readBlocksArr.push( block );
+      }
+
+      series( readBlocksArr, ( next, block, index ) => {
+        this.readBlock( block )
+          .then( data$$1 => {
+            readBlocksArr[ index ] = data$$1;
+            next();
+          } )
+          .catch( err => {
+            console.log( '!!!' );
+            next( err );
+          } );
+      }, err => err ? fail( err ) : done( readBlocksArr ) );
+    } )
+  },
+
+  writeSector( start, chunk ) {
+
+  }
+};
+
+var Bus = options => Object.assign( new _Bus( options ), NfcBus );
 
 var data$2 = { TNF_EMPTY: 0,
   TNF_WELL_KNOWN: 1,
@@ -771,18 +995,10 @@ var decode$1 = function decode(data) {
 };
 
 /**
- * Creates a JSON representation of a NDEF Record.
- *
- * @tnf 3-bit TNF (Type Name Format) - use one of the constants.TNF_* constants
- * @type byte array, containing zero to 255 bytes, must not be null
- * @id byte array, containing zero to 255 bytes, must not be null
- * @payload byte array, containing zero to (2 ** 32 - 1) bytes, must not be null
- *
- * @returns JSON representation of a NDEF record
- *
- * @see Ndef.textRecord, Ndef.uriRecord and Ndef.mimeMediaRecord for examples
- */
-
+  * shorten a URI with standard prefix
+  *
+  * @returns an array of bytes
+  */
 var record = function record(tnf, type, id, payload, value) {
   if (!tnf) {
     tnf = data$2.TNF_EMPTY;
@@ -842,14 +1058,11 @@ var textRecord = function textRecord(text, languageCode, id) {
 };
 
 /**
-* Encodes an NDEF Message into bytes that can be written to a NFC tag.
-*
-* @ndefRecords an Array of NDEF Records
-*
-* @returns byte array
-*
-* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
-*/
+ * Helper that creates a NDEF record containing a URI.
+ *
+ * @uri String
+ * @id byte[] (optional)
+ */
 var encodeMessage = function encodeMessage(ndefRecords) {
   var encoded = [],
       tnf_byte = void 0,
@@ -908,11 +1121,13 @@ var encodeMessage = function encodeMessage(ndefRecords) {
 };
 
 /**
-* Encode NDEF bit flags into a TNF Byte.
+* Decodes an array bytes into an NDEF Message
 *
-* @returns tnf byte
+* @bytes an array bytes read from a NFC tag
 *
-*  See NFC Data Exchange Format (NDEF) Specification Section 3.2 RecordLayout
+* @returns array of NDEF Records
+*
+* @see NFC Data Exchange Format (NDEF) http://www.nfc-forum.org/specs/spec_list/
 */
 var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   if (!value) {
@@ -943,184 +1158,130 @@ var encodeTnf = function encodeTnf(mb, me, cf, sr, il, tnf, value) {
   return value;
 };
 
-blink();
+// TODO test with byte[] and string
 
-const encoded = encodeMessage([
-  textRecord('2enhello world!')
-]);
+// import Bus from 'bus'
+// import Schedule from 'schedule'
+let usbConsole = true;
+let consoleBus = null;
+function toggleConsole() {
+  usbConsole = !usbConsole;
+  if ( usbConsole ) {
+    consoleBus = null;
+    USB.removeAllListeners();
+  } else {
+    consoleBus = new Bus( {
+      setup() {
+        USB.on( 'data', this.parse.bind( this ) );
+      },
+      read() {},
+      write() {}
+    } );
 
-const wakeup = command([PN532_WAKEUP]);
-const sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
+    consoleBus.watch( [ Buffer.from( '/on' ) ], () => {
+      LED1.write( 1 );
+      USB.write( '/on\r\n' );
+    } );
 
-function rx(data) {
-  this._busState.push(data);
-  this._busState.nodes().forEach(node => this.parse(node.chunk));
+    consoleBus.watch( [ Buffer.from( '/off' ) ], () => {
+      LED1.write( 0 );
+      USB.write( '/off\r\n' );
+    } );
+
+    consoleBus.on( 'error', err => {
+      once( LED1, 200 );
+    } );
+
+    consoleBus.setup();
+  }
+
+  usbConsole ?
+    USB.setConsole( false ) :
+    LoopbackA.setConsole( false );
 }
 
-function setup(done) {
-  Serial1.setup(115200, {
-    rx: B7, tx: B6
-  });
+setWatch( toggleConsole, BTN1, {
+  repeat: true,
+  edge: 'rising',
+  debounce: 50
+} );
 
-  Serial1.write(wakeup);
-  Serial1.write(sam);
+start( LED2 );
 
-  setTimeout(() => {
+const encoded = encodeMessage( [
+  textRecord( '2enhello world!' )
+] );
+
+const wakeup = command( [ PN532_COMMAND_WAKEUP ] );
+const sam = command( [ PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0 ] );
+
+function setup( done ) {
+  Serial1.setup( 115200, {
+    rx: B7,
+    tx: B6
+  } );
+
+  Serial1.write( wakeup );
+  Serial1.write( sam );
+
+  setTimeout( () => {
     Serial1.read();
-    Serial1.on('data', rx.bind(this));
-  }, 1500);
-
-  setTimeout(() => {
-    blink.once(LED1, 20, () => setTimeout(() => blink.once(LED1, 20), 200));
-
-    done();
-  }, 2000);
+    Serial1.on( 'data', data => bus.parse( data ) );
+    once( LED1, 20, () => setTimeout( () => once( LED1, 20 ), 200 ) );
+  }, 50 );
 }
 
-const bus = new _Bus({
-  setup, highWaterMark: 64
-});
+const bus = new Bus( {
+  setup,
+  read() {},
+  write( chunk ) {
+    Serial1.write( chunk );
+  },
+  highWaterMark: 64
+} );
 
-const schedule = new _Schedule();
+bus.on( 'error', err => {
+  console.error( 'BusError:', err );
+} );
 
-bus.on('error', console.error);
+bus.setup();
 
-schedule.deferred(setup.bind(bus));
+const key = new Uint8Array( [].fill( 0xff, 0, 6 ) );
 
-const readBlock = (uid, key, block) => {
-  const auth = (done, fail) => {
-    "compiled";
-
-    const AUTH = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_AUTH_A,
-      block,
-      ...key,
-      ...uid
-    ]);
-
-    bus.rx(ack, ack$$1 => {});
-
-    bus.rx(err, err$$1 => {
-      console.error(err$$1);
-      fail(err$$1);
-    });
-
-    bus.rx(info, frame => {
-      console.log('AUTH SUCCEED', {
-        code: frame[6],
-        body: frame.slice(7, -2)
-      });
-
-      done();
-    });
-
-    Serial1.write(AUTH);
-  };
-
-  const read = (done, fail) => {
-    console.log('read');
-    const READ = command([
-      PN532_COMMAND_INDATAEXCHANGE,
-      1,
-      MIFARE_CMD_READ_16,
-      block
-    ]);
-
-    bus.rx(ack, ack$$1 => {});
-
-    bus.rx(err, err$$1 => {
-      console.error(err$$1);
-      fail(err$$1);
-    });
-
-    bus.rx(info, frame => {
-      const body = frame.slice(8, -2);
-      const data = {
-        block,
-        status: frame[7],
-        body,
-        length: body.length
-      };
-
-      done(data);
-    });
-
-    Serial1.write(READ);
-  };
-
-  return Promise.resolve()
-    .then(() => new Promise(auth))
-    .then(() => new Promise(read))
-};
-
-const readSector = (uid, key, sector) => {
-  return new Promise((done, fail) => {
-    const readBlocksArr = [];
-    for(let block = sector * 4; block < sector * 4 + 4; block ++) {
-      readBlocksArr.push(block);
-    }
-    series(readBlocksArr, (next, block, index) => {
-      readBlock(uid, key, block).then(data => {
-        readBlocksArr[index] = data;
-        next();
-      });
-    }, () => done(readBlocksArr));
-  })
-};
-
-const key = new Uint8ClampedArray([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);(function poll() {
-  let uid;
-
-  schedule.deferred(done => {
-    const LIST = command([
-      PN532_COMMAND_INLISTPASSIVETARGET,
-      1,
-      0
-    ]);
-
-    bus.rx(ack, () => {
-      console.log('ACK');
-    });
-
-    bus.rx(info, frame => {
-      const body = frame.slice(7, 5 + frame[3]),
-            uidLength = body[5],
-            _uid = body.slice(6, 6 + uidLength);
-
-      console.log('FOUND', {
-        code: frame[6],
-        body,
-        count: body[0],
-        ATQA: body.slice(2, 4), // SENS_RES
-        SAK: body[4],
-        uidLength,
-        uid: _uid
-      }['ATQA']);
-
-      uid = _uid;
-
-      done();
-    });
-
-    Serial1.write(LIST);
-  });
-
-  schedule.deferred((done, fail) => {
-    readSector(uid, key, 0)
-      .then(data => {
-        console.log(data);
+setTimeout( () => {
+  ( function poll() {
+    // console.log(process.memory().free)
+    // console.log(bus._busState.watching.length)
+    Promise.resolve()
+      .then( () => bus.findTargets( 1, 'A' ) ) // .then(data => { console.log('found card', data.uid); return data })
+      .then( data => {
+        LED1.write( true );
         return data
-      })
-      .then(done).catch(console.error);
-  });
-
-  schedule.deferred(done => {
-    setTimeout(() => {
-      console.log(process.memory().free);
-      done();
-      poll();
-    }, 1000);
-  });
-})();
+      } )
+      // .then(data => bus.authenticate(4, data.uid, key).then(data => { console.log('auth op 4:', data) }).then(() => bus.authenticate(3, data.uid, key).then(data => { console.log('auth op:', data) })))
+      .then( data => bus.authenticate( 1 * 4, data.uid, key ) ) // .then(data => { console.log('auth', data) })
+      // .then(data => bus.writeBlock(4, [1, 3, 6, 4])).then(data => { console.log('write op:', data) })
+      // .then(data => { console.time('reading 2 sector'); return data })
+      .then( data => bus.readSector( 1 ) )
+      .then( data => {
+        LED1.write( false );
+        return data
+      } ) // .then(data => { console.log('sector 2:', data); return data })
+      .then( data => data.reduce( ( buffer, data ) => [ ...buffer, ...[].slice.call( data.chunk, 0 ) ], [] ) )
+      .then( console.log )
+      // .then(data => { console.timeEnd('reading 2 sector'); return data })
+      // .then(data => bus.readBlock(4)).then(data => { console.log('block 4:', data) })
+      // .then(data => bus.readBlock(5)).then(data => { console.log('block 5:', data) })
+      // .then(data => bus.readBlock(6)).then(data => { console.log('block 6:', data) })
+      // .then(data => bus.readBlock(7)).then(data => { console.log('block 7:', data) })
+      .catch( err => {
+        LED1.write( false );
+        console.error( 'Error:', err );
+      } )
+      .then( () => {
+        setTimeout( () => {
+          poll();
+        }, 500 );
+      } );
+  } )();
+}, 1000 );
