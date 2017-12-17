@@ -1,12 +1,31 @@
 'use strict';
 
-E.on('init', () => {
+if (typeof console.time !== 'function') {
+  var timers = {};
+
+  console.time = function (label) {
+    timers[label] = Date.now();
+  };
+
+  console.timeEnd = function (label) {
+    if (label in timers) {
+      console.log(label + ': ' + (Date.now() - timers[label]).toFixed(3) + 'ms');
+      delete timers[label];
+    }
+  };
+}
+
+if (typeof console.error !== 'function') {
+  console.error = console.log;
+}
+
+E.on('init', function () {
   Serial1.setup(115200);
   Serial2.setup(115200);
   Serial1.setConsole(true);
 });
 
-setInterval(() => {
+setInterval(function () {
   console.log('ok');
 }, 1000);
 

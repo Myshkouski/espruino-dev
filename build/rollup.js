@@ -77,7 +77,7 @@ const aliasedNodeModules = {
   // 'schedule': path.resolve(__lib, 'schedule.js'),
   // 'series': path.resolve(__helpers, 'series.js'),
   // 'callN': path.resolve(__helpers, 'callN.js'),
-  // 'once': path.resolve(__helpers, 'callOnce.js')
+  'once': path.resolve(__helpers, 'callOnce.js')
 }
 
 const aliasedEspModules = {
@@ -89,6 +89,12 @@ const aliasedEspModules = {
 }
 
 Object.assign(aliasedEspModules, aliasedNodeModules)
+
+const ESP32globals = {
+  modules: {
+    'global': path.resolve(__approot, 'platforms/esp32.js')
+  }
+}
 
 const babelOptions = {
   exclude: 'node_modules/**'
@@ -159,7 +165,7 @@ export default [
     input,
     output: {
       format: 'cjs',
-      file: path.resolve(__dist, 'index.esp.js')
+      file: path.resolve(__dist, 'index.pico.js')
     },
 
     plugins: [
@@ -194,7 +200,7 @@ export default [
     output: {
       format: 'cjs',
       sourcemap: true,
-      file: path.resolve(__dist, 'index.esp.min.js'),
+      file: path.resolve(__dist, 'index.pico.min.js'),
     },
 
     plugins: [
@@ -209,6 +215,50 @@ export default [
       inject(espPolyfills),
 
       inject(injectPolyfillExcludeNM),
+
+      replace(replaceInstanceOf),
+
+      // typeOf(),
+
+      yaml(),
+
+      babel(babelOptions),
+
+      uglify(uglifyOptions),
+
+      analyze({
+        limit: 5,
+        root: __approot
+      }),
+
+
+
+      filesize()
+    ]
+  },
+
+  {
+    input,
+    output: {
+      format: 'cjs',
+      sourcemap: true,
+      file: path.resolve(__dist, 'index.esp32.min.js'),
+    },
+
+    plugins: [
+      resolve(resolveOptions),
+
+      commonjs(commonjsOptions),
+
+      alias(aliasedEspModules),
+
+      inject(injectEventLoopOptions),
+
+      inject(espPolyfills),
+
+      inject(injectPolyfillExcludeNM),
+
+      inject(ESP32globals),
 
       replace(replaceInstanceOf),
 

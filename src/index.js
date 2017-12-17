@@ -1,6 +1,6 @@
 // import Bus from 'bus'
 // import Schedule from 'schedule'
-import * as Blink from 'Blink'
+import * as Blink from 'blink'
 import {
   command,
   ACK,
@@ -34,69 +34,81 @@ let usbConsole = true
 let consoleBus = null
 let log = ''
 
-function toggleConsole() {
-  usbConsole = !usbConsole
-  if ( usbConsole ) {
-    consoleBus = null
-    USB.removeAllListeners()
-  } else {
-    consoleBus = new Bus( {
-      setup() {
-        USB.on( 'data', this.parse.bind( this ) )
-      },
-      read() {},
-      write() {}
-    } )
+const USB = Serial1
+const LED1 = D5
 
-    consoleBus.watch( [ Buffer.from( '/on' ) ], () => {
-      LED1.write( 1 )
-      USB.write( '/on\r\n' )
-    } )
+// function toggleConsole() {
+//   usbConsole = !usbConsole
+//   if (usbConsole) {
+//     consoleBus = null
+//     USB.removeAllListeners()
+//   } else {
+//     consoleBus = new Bus({
+//       setup() {
+//         USB.on('data', data => {
+//           this.parse.call(this, data)
+//           USB.setup()
+//           // USB.write(Buffer.from(['!', ...[].slice.call(data, 0)]))
+//         })
+//       },
+//       read() {},
+//       write() {}
+//     })
+//
+//     consoleBus.rx([Buffer.from('/on')], () => {
+//       Blink.once(LED1)
+//       USB.write(JSON.stringify(consoleBus._busState))
+//       // toggleConsole()
+//     })
+//
+//     // consoleBus.rx([Buffer.from('/off')], () => {
+//     //   LED1.write(1)
+//     //   // USB.write('/off\r\n')
+//     //   // toggleConsole()
+//     // })
+//     //
+//     // consoleBus.on('error', err => {
+//     //   Blink.once(LED1, 200)
+//     // })
+//
+//     consoleBus.setup()
+//   }
+//
+//   usbConsole ?
+//     USB.setConsole(false) :
+//     LoopbackA.setConsole(false)
+// }
+//
+// toggleConsole()
 
-    consoleBus.watch( [ Buffer.from( '/off' ) ], () => {
-      LED1.write( 0 )
-      USB.write( '/off\r\n' )
-    } )
-
-    consoleBus.on( 'error', err => {
-      Blink.once( LED1, 200 )
-    } )
-
-    consoleBus.setup()
-  }
-
-  usbConsole ?
-    USB.setConsole( false ) :
-    LoopbackA.setConsole( false )
-}
-
-setWatch( toggleConsole, BTN1, {
-  repeat: true,
-  edge: 'rising',
-  debounce: 50
-} )
-
-Blink.start( LED2 )
-
-const encoded = encodeMessage( [
-  textRecord( '2enhello world!' )
-] )
-
+// setWatch( toggleConsole, BTN1, {
+//   repeat: true,
+//   edge: 'rising',
+//   debounce: 50
+// } )
+//
+// Blink.start( LED2 )
+//
+// const encoded = encodeMessage( [
+//   textRecord( '2enhello world!' )
+// ] )
+//
 const wakeup = command( [ PN532_COMMAND_WAKEUP ] )
 const sam = command( [ PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0 ] )
 
-function setup( done ) {
-  Serial1.setup( 115200, {
-    rx: B7,
-    tx: B6
-  } )
+const serial = Serial2
+USB.setConsole(true)
 
-  Serial1.write( wakeup )
-  Serial1.write( sam )
+
+function setup( done ) {
+  serial.setup( 115200 )
+
+  serial.write( wakeup )
+  serial.write( sam )
 
   setTimeout( () => {
-    Serial1.read()
-    Serial1.on( 'data', data => bus.parse( data ) )
+    serial.read()
+    serial.on( 'data', data => bus.parse( data ) )
     Blink.once( LED1, 20, () => setTimeout( () => Blink.once( LED1, 20 ), 200 ) )
   }, 50 )
 }
@@ -105,7 +117,7 @@ const bus = new Bus( {
   setup,
   read() {},
   write( chunk ) {
-    Serial1.write( chunk )
+    serial.write( chunk )
   },
   highWaterMark: 64
 } )

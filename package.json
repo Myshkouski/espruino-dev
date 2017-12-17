@@ -36,6 +36,7 @@
     "rollup-plugin-root-import": "^0.2.2",
     "rollup-plugin-uglify": "^2.0.1",
     "rollup-plugin-yaml": "^1.1.0",
+    "serialport": "^6.0.4",
     "webpack": "^3.8.1",
     "yaml-loader": "^0.5.0"
   },
