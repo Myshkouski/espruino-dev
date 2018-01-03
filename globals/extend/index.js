@@ -72,9 +72,9 @@ const _extend = (options = {}) => {
     }
   }
 
-  Object.defineProperty(Extended, 'prototype', { value: {} })
-  Object.defineProperty(Extended.prototype, 'constructor', { value: Child })
-  Object.defineProperty(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true })
+  Extended.prototype = {}
+  Extended.prototype.constructor = Child
+  Extended.prototype[PROTOTYPE_IS_EXTENDED_PROP] = true
 
   for(let i in options.super) {
     function Proto() {}
@@ -98,6 +98,6 @@ const _extend = (options = {}) => {
   return Extended
 }
 
-const extend = (...args) => _extend({ super: args.slice(1), apply: args })
+export const extend = (...args) => _extend({ super: args.slice(1), apply: args })
 
-export { extend, _extend, _copyChain }
+export { _extend, _copyChain }

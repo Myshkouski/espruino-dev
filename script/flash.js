@@ -14,13 +14,9 @@ const serial = new Serial(argv.port || '/dev/ttyUSB0', { baudRate: 115200 })
 serial.on('open', () => {
   console.log('open')
 
-  const onData = chunk => {
-    console.log(chunk.toString())
-  }
+  serial.read()
 
-  serial.on('data', onData)
-
-  serial.write('reset(true)\r\n')
+  serial.write('\r\nreset(true)\r\necho(0)\r\n')
 
   setTimeout(() => {
 
@@ -30,6 +26,12 @@ serial.on('open', () => {
 
     serial.write('\r\n')
 
+    const onData = chunk => {
+      console.log(chunk.toString())
+    }
+
+    serial.on('data', onData)
+
     // serial.removeListener('data', onData)
 
     // process.stdin.pipe(serial).pipe(process.stdout)
@@ -37,5 +39,5 @@ serial.on('open', () => {
     // process.stdin.resume()
 
     process.stdin.on('data', data => console.log('!', data))
-  }, 1000)
+  }, 1e3)
 })

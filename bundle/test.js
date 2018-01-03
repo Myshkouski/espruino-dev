@@ -1,3 +1,5 @@
+'use strict';
+
 // import Uint8Array from './Uint8Array'
 // import { toBuffer } from './utils/to'
 
@@ -22,10 +24,10 @@ function Buffer() {
 
 Buffer.from = (iterable, offset, length) => {
   if (typeof iterable == 'string') {
-    const parsed = []
+    const parsed = [];
 
     for (let c in iterable) {
-      parsed[c] = iterable.charCodeAt(c)
+      parsed[c] = iterable.charCodeAt(c);
     }
 
     return new Uint8Array(parsed)
@@ -36,19 +38,35 @@ Buffer.from = (iterable, offset, length) => {
   } else {
     throw new TypeError('Cannot create buffer from', typeof iterable)
   }
-}
+};
 
 Buffer.concat = (_list, _totalLength) => {
   const list = _list || [],
     totalLength = _totalLength !== undefined ? _totalLength : list.reduce((totalLength, array) => totalLength + array.length, 0),
-    buffer = Buffer.from([], 0, totalLength)
+    buffer = Buffer.from([], 0, totalLength);
 
   list.reduce((offset, buf) => {
-    buffer.set(buf, offset)
+    buffer.set(buf, offset);
     return offset + buf.length
-  }, 0)
+  }, 0);
 
   return buffer
-}
+};
 
-export default Buffer
+// import Bus from 'bus'
+//
+// const preamble = [1, 2, 3]
+// const postamble = [4, 5, 6]
+//
+// const bus = new Bus({ read() {}, write() {}, setup() {} })
+//
+// bus.on('error', console.error)
+//
+// bus.rx([
+//   preamble
+// ], console.warn)
+//
+// bus.push(preamble)
+const a = new Uint8Array([1, 2, 3]);
+
+console.log(Buffer.from(a.buffer, 1, 1));

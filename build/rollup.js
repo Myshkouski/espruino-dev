@@ -42,11 +42,11 @@ const espPolyfills = {
 const injectPolyfillExcludeNM = {
   exclude: 'node_modules/**',
   modules: {
-    //'_extend': [path.resolve(__globals, 'extend/index.js'), '_extend'],
-    //'extend': [path.resolve(__globals, 'extend/index.js'), 'extend'],
-    //'_named': path.resolve(__globals, 'namedFunc.js'),
+    '_extend': [path.resolve(__globals, 'extend/index.js'), '_extend'],
+    'extend': [path.resolve(__globals, 'extend/index.js'), 'extend'],
+    '_named': path.resolve(__globals, 'namedFunc.js'),
     'defProp': [path.resolve(__globals, 'def.js'), 'defProp'],
-    //'iof': path.resolve(__globals, 'iof.js')
+    'iof': path.resolve(__globals, 'iof.js')
   }
 }
 
@@ -92,7 +92,7 @@ Object.assign(aliasedEspModules, aliasedNodeModules)
 
 const ESP32globals = {
   modules: {
-    'global': path.resolve(__approot, 'platforms/esp32.js')
+    // 'global': path.resolve(__approot, 'platforms/esp32.js')
   }
 }
 
@@ -105,12 +105,12 @@ const resolveOptions = {
   jsnext: true,
   main: true,
   jail: __approot,
-  preferBuiltins: false,
+  // preferBuiltins: false,
   customResolveOptions: {
     // order makes sense!
     moduleDirectory: ['lib', 'helpers', 'node_modules']
   },
-  extensions: ['.js', '.json', '.yml']
+  extensions: ['.js', '.json', '.yaml', '.yml']
 }
 
 const commonjsOptions = {
@@ -134,10 +134,10 @@ const uglifyOptions = {
 
 export default [
   {
-    input,
+    input: 'src/test.js',
     output: {
       format: 'cjs',
-      file: path.resolve(__dist, 'index.node.js')
+      file: path.resolve(__dist, 'test.js')
     },
 
     plugins: [
@@ -153,11 +153,7 @@ export default [
 
       // typeOf(),
 
-      yaml(),
-
-
-
-      filesize()
+      yaml()
     ]
   },
 
