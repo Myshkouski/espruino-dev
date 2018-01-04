@@ -1,11 +1,20 @@
-export default function series(arr, cb, done) {
+export default function series( arr, cb, done ) {
   let i = 0
-  ;(function next(res) {
-    if (res !== undefined || i >= arr.length) {
-      done && done(res)
+  let aborted = false;
+  ( function next( res ) {
+    if ( !aborted ) {
+      if ( typeof res !== 'undefined' || i >= arr.length ) {
+        done && done( res )
+      } else {
+        setImmediate( () => {
+          try {
+            cb( next, arr[ i ], i++, arr )
+          } catch ( err ) {
+            next( err )
+            aborted = true
+          }
+        } )
+      }
     }
-    else {
-      setImmediate(() => cb(next, arr[i], i++, arr))
-    }
-  })()
+  } )()
 }

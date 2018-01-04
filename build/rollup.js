@@ -13,6 +13,9 @@ import legacy from 'rollup-plugin-legacy'
 import analyze from 'rollup-analyzer-plugin'
 import defaults from 'lodash.defaultsdeep'
 import includePaths from 'rollup-plugin-includepaths'
+import progress from 'rollup-plugin-progress'
+import filesize from 'rollup-plugin-filesize'
+import typeOf from 'rollup-plugin-inline-typeof'
 
 const __approot = path.resolve(__dirname, '../')
 const __lib = path.resolve(__approot, 'lib')
@@ -30,8 +33,8 @@ const espPolyfills = {
     'Object': path.resolve(__globals, 'object.js'),
     'Array': path.resolve(__globals, 'array.js'),
     'Promise': path.resolve(__globals, 'promise.js'),
-    'Buffer': path.resolve(__globals, 'buffer/index.js'),
-    // 'process': path.resolve(__globals, 'process.js'),
+    'Buffer': path.resolve(__globals, 'buffer.js'),
+    //'process': path.resolve(__globals, 'process.js'),
     'console': path.resolve(__globals, 'console.js')
   }
 }
@@ -50,9 +53,9 @@ const injectPolyfillExcludeNM = {
 const injectEventLoopOptions = {
   exclude: `${ path.resolve(__lib, 'event-loop.js') }/**`,
   modules: {
-    // 'setTimeout': [path.resolve(__globals, 'event-loop.js'), 'setTimeout'],
+    //'setTimeout': [path.resolve(__globals, 'event-loop.js'), 'setTimeout'],
     'setImmediate': [path.resolve(__globals, 'event-loop.js'), 'setImmediate'],
-    // 'setInterval': [path.resolve(__globals, 'event-loop.js'), 'setInterval']
+    //'setInterval': [path.resolve(__globals, 'event-loop.js'), 'setInterval']
   }
 }
 
@@ -74,18 +77,24 @@ const aliasedNodeModules = {
   // 'schedule': path.resolve(__lib, 'schedule.js'),
   // 'series': path.resolve(__helpers, 'series.js'),
   // 'callN': path.resolve(__helpers, 'callN.js'),
-  // 'once': path.resolve(__helpers, 'callOnce.js')
+  'once': path.resolve(__helpers, 'callOnce.js')
 }
 
 const aliasedEspModules = {
   // 'event-loop': path.resolve(__globals, 'event-loop.js'),
-  // 'events': path.resolve(__lib, 'events.js'),
+  'events': path.resolve(__lib, 'events.js'),
   // 'stream': path.resolve(__lib, 'stream/index.js'),
-  'buffer': path.resolve(__globals, 'buffer/index.js'),
+  // 'buffer': path.resolve(__globals, 'buffer/index.js'),
   // 'blink': path.resolve(__lib, 'blink.js')
 }
 
 Object.assign(aliasedEspModules, aliasedNodeModules)
+
+const ESP32globals = {
+  modules: {
+    // 'global': path.resolve(__approot, 'platforms/esp32.js')
+  }
+}
 
 const babelOptions = {
   exclude: 'node_modules/**'
@@ -96,11 +105,12 @@ const resolveOptions = {
   jsnext: true,
   main: true,
   jail: __approot,
-  preferBuiltins: false,
+  // preferBuiltins: false,
   customResolveOptions: {
+    // order makes sense!
     moduleDirectory: ['lib', 'helpers', 'node_modules']
   },
-  extensions: ['.js', '.json', '.yaml']
+  extensions: ['.js', '.json', '.yaml', '.yml']
 }
 
 const commonjsOptions = {
@@ -113,21 +123,21 @@ const uglifyOptions = {
   compress: {
     unsafe: true,
     unsafe_proto: true,
-    passes: 5
+    passes: 3
   },
   mangle: {
-    properties: {
-      regex: /^_/
-    }
+    // properties: {
+    //   regex: /^_/
+    // }
   }
 }
 
 export default [
   {
-    input,
+    input: 'src/test.js',
     output: {
       format: 'cjs',
-      file: path.resolve(__dist, 'index.node.js')
+      file: path.resolve(__dist, 'test.js')
     },
 
     plugins: [
@@ -141,6 +151,8 @@ export default [
 
       replace(replaceInstanceOf),
 
+      // typeOf(),
+
       yaml()
     ]
   },
@@ -149,7 +161,7 @@ export default [
     input,
     output: {
       format: 'cjs',
-      file: path.resolve(__dist, 'index.esp.js')
+      file: path.resolve(__dist, 'index.pico.js')
     },
 
     plugins: [
@@ -167,9 +179,15 @@ export default [
 
       replace(replaceInstanceOf),
 
+      // typeOf(),
+
       yaml(),
 
-      babel(babelOptions)
+      babel(babelOptions),
+
+      eslint({}),
+
+      filesize()
     ]
   },
 
@@ -178,7 +196,7 @@ export default [
     output: {
       format: 'cjs',
       sourcemap: true,
-      file: path.resolve(__dist, 'index.esp.min.js'),
+      file: path.resolve(__dist, 'index.pico.min.js'),
     },
 
     plugins: [
@@ -195,6 +213,8 @@ export default [
       inject(injectPolyfillExcludeNM),
 
       replace(replaceInstanceOf),
+
+      // typeOf(),
 
       yaml(),
 
@@ -205,7 +225,55 @@ export default [
       analyze({
         limit: 5,
         root: __approot
-      })
+      }),
+
+
+
+      filesize()
+    ]
+  },
+
+  {
+    input,
+    output: {
+      format: 'cjs',
+      sourcemap: true,
+      file: path.resolve(__dist, 'index.esp32.min.js'),
+    },
+
+    plugins: [
+      resolve(resolveOptions),
+
+      commonjs(commonjsOptions),
+
+      alias(aliasedEspModules),
+
+      inject(injectEventLoopOptions),
+
+      inject(espPolyfills),
+
+      inject(injectPolyfillExcludeNM),
+
+      inject(ESP32globals),
+
+      replace(replaceInstanceOf),
+
+      // typeOf(),
+
+      yaml(),
+
+      babel(babelOptions),
+
+      uglify(uglifyOptions),
+
+      analyze({
+        limit: 5,
+        root: __approot
+      }),
+
+
+
+      filesize()
     ]
   }
-]
+].reverse()
