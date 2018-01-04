@@ -31,7 +31,7 @@ const espPolyfills = {
     'Array': path.resolve(__globals, 'array.js'),
     'Promise': path.resolve(__globals, 'promise.js'),
     'Buffer': path.resolve(__globals, 'buffer/index.js'),
-    'process': path.resolve(__globals, 'process.js'),
+    // 'process': path.resolve(__globals, 'process.js'),
     'console': path.resolve(__globals, 'console.js')
   }
 }
@@ -41,8 +41,8 @@ const injectPolyfillExcludeNM = {
   modules: {
     '_extend': [path.resolve(__globals, 'extend/index.js'), '_extend'],
     'extend': [path.resolve(__globals, 'extend/index.js'), 'extend'],
-    '_named': path.resolve(__globals, 'namedFunc.js'),
-    'defProp': [path.resolve(__globals, 'def.js'), 'defProp'],
+    // '_named': path.resolve(__globals, 'namedFunc.js'),
+    // 'defProp': [path.resolve(__globals, 'def.js'), 'defProp'],
     'iof': path.resolve(__globals, 'iof.js')
   }
 }
@@ -50,21 +50,21 @@ const injectPolyfillExcludeNM = {
 const injectEventLoopOptions = {
   exclude: `${ path.resolve(__lib, 'event-loop.js') }/**`,
   modules: {
-    'setTimeout': [path.resolve(__globals, 'event-loop.js'), 'setTimeout'],
+    // 'setTimeout': [path.resolve(__globals, 'event-loop.js'), 'setTimeout'],
     'setImmediate': [path.resolve(__globals, 'event-loop.js'), 'setImmediate'],
-    'setInterval': [path.resolve(__globals, 'event-loop.js'), 'setInterval']
+    // 'setInterval': [path.resolve(__globals, 'event-loop.js'), 'setInterval']
   }
 }
 
 const replaceInstanceOf = {
-  patterns: [
-    {
-      include: __src + '/**',
-      exclude: path.resolve(__lib, 'iof.js'),
-      test: /(?!\s)([\[\]{}\w.\s+\-*/><]+)[\r\n\t\s]+instanceof[\r\n\t\s]+([\[\]{}\w.\s+\-*/><]+)(?!\s)/ig,
-      replace: (...args) => `iof(${ args[1] }, ${ args[2] })`
-    }
-  ]
+  // patterns: [
+  //   {
+  //     include: __src + '/**',
+  //     exclude: path.resolve(__lib, 'iof.js'),
+  //     test: /(?!\s)([\[\]{}\w.\s+\-*/><]+)[\r\n\t\s]+instanceof[\r\n\t\s]+([\[\]{}\w.\s+\-*/><]+)(?!\s)/ig,
+  //     replace: (...args) => `iof(${ args[1] }, ${ args[2] })`
+  //   }
+  // ]
 }
 
 const aliasedNodeModules = {
@@ -78,7 +78,7 @@ const aliasedNodeModules = {
 }
 
 const aliasedEspModules = {
-  'event-loop': path.resolve(__globals, 'event-loop.js'),
+  // 'event-loop': path.resolve(__globals, 'event-loop.js'),
   // 'events': path.resolve(__lib, 'events.js'),
   // 'stream': path.resolve(__lib, 'stream/index.js'),
   'buffer': path.resolve(__globals, 'buffer/index.js'),
@@ -98,7 +98,7 @@ const resolveOptions = {
   jail: __approot,
   preferBuiltins: false,
   customResolveOptions: {
-    moduleDirectory: ['node_modules', 'lib', 'helpers']
+    moduleDirectory: ['lib', 'helpers', 'node_modules']
   },
   extensions: ['.js', '.json', '.yaml']
 }
@@ -109,9 +109,16 @@ const commonjsOptions = {
 
 const uglifyOptions = {
   sourceMap: true,
-  //toplevel: true,
+  toplevel: true,
+  compress: {
+    unsafe: true,
+    unsafe_proto: true,
+    passes: 5
+  },
   mangle: {
-    properties: false
+    properties: {
+      regex: /^_/
+    }
   }
 }
 

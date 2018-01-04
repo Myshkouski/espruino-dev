@@ -1,16 +1,11 @@
-const PUSH_TO_QUEUE_IMMEDIATE = 0,
-      PUSH_AT_NEXT_STAGE = 1,
-      loop = [
-        // nextTick
-        { queue: [], immediatePush: true, tick: false },
-        // immediate
-        { queue: [], immediatePush: true, tick: false },
-        // timeout
-        { queue: [], immediatePush: false, tick: false }
-      ]
+const loop = [
+  // immediate
+  { queue: [], immediatePush: true, tick: false },
+  // timeout
+  { queue: [], immediatePush: false, tick: false }
+]
 
-let tick = false,
-    timers = {}
+let tick = false
 
 const asyncFlush = () => {
   for (let stage in loop) {
@@ -42,42 +37,20 @@ const asyncCall = stage => cb => {
   }
 }
 
-const nextTick = asyncCall(/* .nextTick */0)
+const setImmediate = asyncCall(/* .immediate */0)
 
-const setImmediate = asyncCall(/* .immediate */1)
+const timeoutCall = asyncCall(/* .timeeout */1)
 
-const timeoutCall = asyncCall(/* .timeeout */2)
+export const _setTimeout = (cb, timeout) => setTimeout(() => { timeoutCall(cb) }, timeout)
 
-export const _setTimeout = (cb, timeout) => {
-  // let index = 0
-  // while(timers[index]) {
-  //   index++
-  // }
-  // timers[index] = setTimeout(() => {
-  //   if(timers[index]) {
-  //     delete timers[index]
-  //     timeoutCall(cb)
-  //   }
-  // }, timeout)
-  //
-  // return index
-
-  return setTimeout(() => {
-    timeoutCall(cb)
+export const _setInterval = (cb, timeout) => (function setTimer() {
+  return _setTimeout(() => {
+    setTimer()
+    cb()
   }, timeout)
-}
-
-export const _setInterval = (cb, timeout) => {
-  return (function setTimer() {
-    return _setTimeout(() => {
-      setTimer()
-      cb()
-    }, timeout)
-  })()
-}
+})()
 
 export {
-  nextTick,
   setImmediate,
   _setTimeout as setTimeout,
   _setInterval as setInterval
