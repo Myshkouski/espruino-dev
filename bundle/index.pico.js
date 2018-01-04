@@ -36,25 +36,32 @@ Object.assign = function (target) {
   return target;
 };
 
-var defProp = function defProp(obj, prop, desc) {
+var _defProp = Object.defineProperty;
+
+Object.defineProperty = function (obj, prop, descriptor) {
   try {
-    return Object.defineProperty(obj, prop, desc);
+    return _defProp(obj, prop, descriptor);
   } catch (e) {
     if (desc.get) {
-      obj.value = desc.get();
+      obj.value = descriptor.get();
     } else if (desc.value) {
-      obj[prop] = desc.value;
+      obj[prop] = descriptor.value;
     }
 
     return obj;
   }
 };
 
-var _named = (function (name, f) {
-  defProp(f, 'name', { value: name });
-  //defProp(f, 'toString', { value: () => '[Function' + (f.name !== undefined ? ': ' + f.name : '') + ']' })
+Object.defineProperties = function (obj, descriptors) {
+  for (var prop in descriptors) {
+    var descriptor = descriptors[prop];
+    Object.defineProperty(obj, prop, descriptor);
+  }
+  return obj;
+};
 
-  return f;
+var _named = (function (name, f) {
+  return Object.defineProperty(f, 'name', { value: name });
 });
 
 var data = { SUPER_CHAIN_PROTO_PROP: "_super",
@@ -137,9 +144,9 @@ var _extend = function _extend() {
     }
   }
 
-  Extended.prototype = {};
-  Extended.prototype.constructor = Child;
-  Extended.prototype[PROTOTYPE_IS_EXTENDED_PROP] = true;
+  Object.defineProperty(Extended, 'prototype', { value: {} });
+  Object.defineProperty(Extended.prototype, 'constructor', { value: Child });
+  Object.defineProperty(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true });
 
   for (var _i in options.super) {
     var Proto = function Proto() {};
@@ -256,8 +263,6 @@ Buffer.concat = function (_list, _totalLength) {
 };
 
 var loop = [
-// nextTick
-{ queue: [], immediatePush: true, tick: false },
 // immediate
 { queue: [], immediatePush: true, tick: false },
 // timeout
@@ -297,11 +302,9 @@ var asyncCall = function asyncCall(stage) {
   };
 };
 
-var nextTick = asyncCall( /* .nextTick */0);
+var setImmediate = asyncCall( /* .immediate */0);
 
-var setImmediate = asyncCall( /* .immediate */1);
-
-var timeoutCall = asyncCall( /* .timeeout */2);
+var timeoutCall = asyncCall( /* .timeeout */1);
 
 function EventEmitter() {
   this._listeners = {};
@@ -554,14 +557,27 @@ BufferState.prototype = {
 };
 
 var DEFAULT_HIGHWATERMARK = 64;
-// const defaultWatcher = {
-//   cache: {},
-//   currentPattern: null,
-//   arrayOffset: 0,
-//   patternIndex: 0,
-//   byteIndex: 0,
-//   length: 0,
-//   active: false
+
+function _resetWatcher(watcher) {
+  watcher.currentPattern = null;
+  watcher.arrayOffset = watcher.patternIndex = watcher.byteIndex = watcher.index = 0;
+  watcher.active = false;
+
+  return watcher;
+
+  // return Object.assign(watcher, defaultWatcher)
+}
+
+// function Watcher(bus) {
+//   _resetWatcher(this)
+//
+//
+// }
+//
+// Watcher.prototype = {
+//   rx() {
+//
+//   }
 // }
 
 function decrementActive() {
@@ -570,17 +586,7 @@ function decrementActive() {
   }
 }
 
-function _resetWatcher(watcher) {
-  watcher.currentPattern = null;
-  watcher.arrayOffset = watcher.patternIndex = watcher.byteIndex = watcher.length = 0;
-  watcher.active = false;
-
-  return watcher;
-
-  // return Object.assign(watcher, defaultWatcher)
-}
-
-function _parse() {
+function _push() {
   var _this = this;
 
   var _busState = this._busState,
@@ -646,14 +652,14 @@ function _parse() {
           }
 
           if (--watcher.arrayOffset > 0) {
-            watcher.length++;
+            watcher.index++;
             continue;
           }
 
           isEqual = true;
         } else if (typeof expected == 'function') {
           try {
-            isEqual = !!expected.call(this, byte, watcher.length, this._busState.slice(1 + watcher.length));
+            isEqual = !!expected.call(this, byte, watcher.index /*i.e. index*/, this._busState.slice(watcher.index /*i.e. actual length*/));
           } catch (err) {
             isEqual = false;
             this.emit('error', err);
@@ -661,19 +667,19 @@ function _parse() {
         }
 
         if (isEqual) {
-          watcher.length++;
+          watcher.index++;
 
           if (++watcher.byteIndex >= watcher.currentPattern.length) {
             if (++watcher.patternIndex >= watcher.patterns.length) {
               // console.time( 'buffer' )
               // console.log(watcher.callback)
-              var _chunk = this._busState.buffer(watcher.length);
+              var _chunk = this._busState.buffer(watcher.index);
               // console.timeEnd( 'buffer' )
               this._busState.nodeIndex = -1;
               try {
                 // console.time( 'cb' )
                 watcher.callback(_chunk,
-                // frame.splice(-watcher.length),
+                // frame.splice(-watcher.index),
                 watcher.pattern);
                 // console.timeEnd( 'cb' )
               } catch (err) {
@@ -693,7 +699,7 @@ function _parse() {
 
               try {
                 if (typeof nextPattern == 'function') {
-                  watcher.currentPattern = nextPattern.call(this, this._busState.slice(watcher.length));
+                  watcher.currentPattern = nextPattern.call(this, this._busState.slice(watcher.index));
                 } else {
                   watcher.currentPattern = nextPattern;
                 }
@@ -781,7 +787,7 @@ _Bus.prototype = {
         this._busState.ticker = true;
         setImmediate(function () {
           _this3._busState.ticker = false;
-          _parse.call(_this3);
+          _push.call(_this3);
         });
       }
     }

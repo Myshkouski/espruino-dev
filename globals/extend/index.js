@@ -4,7 +4,7 @@ import {
   PROTOTYPE_IS_EXTENDED_PROP
 } from './props'
 
-const _copyChain = (Extended, ProtoChain, chainPropName, ignoreExtended) => {
+export const _copyChain = (Extended, ProtoChain, chainPropName, ignoreExtended) => {
   //if chain on [Extended] has not been created yet
   if(!Extended.prototype[chainPropName]) {
     Object.defineProperty(Extended.prototype, chainPropName, { value: [] })
@@ -37,7 +37,7 @@ const _copyChain = (Extended, ProtoChain, chainPropName, ignoreExtended) => {
   //console.log(Extended.prototype[chainPropName])
 }
 
-const _extend = (options = {}) => {
+export const _extend = (options = {}) => {
   if(!options.apply)
     options.apply = []
   if(!options.super)
@@ -72,9 +72,9 @@ const _extend = (options = {}) => {
     }
   }
 
-  Extended.prototype = {}
-  Extended.prototype.constructor = Child
-  Extended.prototype[PROTOTYPE_IS_EXTENDED_PROP] = true
+  Object.defineProperty(Extended, 'prototype', { value: {} })
+  Object.defineProperty(Extended.prototype, 'constructor', { value: Child })
+  Object.defineProperty(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true })
 
   for(let i in options.super) {
     function Proto() {}
@@ -99,5 +99,3 @@ const _extend = (options = {}) => {
 }
 
 export const extend = (...args) => _extend({ super: args.slice(1), apply: args })
-
-export { _extend, _copyChain }

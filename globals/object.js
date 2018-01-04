@@ -11,4 +11,30 @@ Object.assign = (target, ...args) => {
   return target
 }
 
+const _defProp = Object.defineProperty
+
+Object.defineProperty = (obj, prop, descriptor) => {
+  try {
+    return _defProp(obj, prop, descriptor)
+  } catch(e) {
+    if(desc.get) {
+      obj.value = descriptor.get()
+    }
+    else if(desc.value) {
+      obj[prop] = descriptor.value
+    }
+
+    return obj
+  }
+}
+
+Object.defineProperties = (obj, descriptors) => {
+  for(let prop in descriptors) {
+    const descriptor = descriptors[prop]
+    Object.defineProperty(obj, prop, descriptor)
+  }
+  return obj
+}
+
+
 export default Object

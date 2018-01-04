@@ -40,12 +40,11 @@ const espPolyfills = {
 }
 
 const injectPolyfillExcludeNM = {
-  exclude: 'node_modules/**',
+  exclude: '/node_modules/**',
   modules: {
     '_extend': [path.resolve(__globals, 'extend/index.js'), '_extend'],
     'extend': [path.resolve(__globals, 'extend/index.js'), 'extend'],
-    // '_named': path.resolve(__globals, 'namedFunc.js'),
-    // 'defProp': [path.resolve(__globals, 'def.js'), 'defProp'],
+    '_named': path.resolve(__globals, 'namedFunction.js'),
     'iof': path.resolve(__globals, 'iof.js')
   }
 }
@@ -71,12 +70,12 @@ const replaceInstanceOf = {
 }
 
 const aliasedNodeModules = {
-  // 'ndef': path.resolve(__lib, 'ndef/dist/index.js'),
-  // 'nfc': path.resolve(__lib, 'nfc/index.js'),
-  // 'bus': path.resolve(__lib, 'bus/index.js'),
-  // 'schedule': path.resolve(__lib, 'schedule.js'),
-  // 'series': path.resolve(__helpers, 'series.js'),
-  // 'callN': path.resolve(__helpers, 'callN.js'),
+  'ndef': path.resolve(__lib, 'ndef/dist/index.js'),
+  'nfc': path.resolve(__lib, 'nfc/index.js'),
+  'bus': path.resolve(__lib, 'bus.js'),
+  'schedule': path.resolve(__lib, 'schedule.js'),
+  'series': path.resolve(__helpers, 'series.js'),
+  'callN': path.resolve(__helpers, 'callN.js'),
   'once': path.resolve(__helpers, 'callOnce.js')
 }
 
@@ -84,7 +83,7 @@ const aliasedEspModules = {
   // 'event-loop': path.resolve(__globals, 'event-loop.js'),
   'events': path.resolve(__lib, 'events.js'),
   // 'stream': path.resolve(__lib, 'stream/index.js'),
-  // 'buffer': path.resolve(__globals, 'buffer/index.js'),
+  'buffer': path.resolve(__globals, 'buffer/index.js'),
   // 'blink': path.resolve(__lib, 'blink.js')
 }
 
@@ -105,7 +104,7 @@ const resolveOptions = {
   jsnext: true,
   main: true,
   jail: __approot,
-  // preferBuiltins: false,
+  preferBuiltins: false,
   customResolveOptions: {
     // order makes sense!
     moduleDirectory: ['lib', 'helpers', 'node_modules']
@@ -134,14 +133,14 @@ const uglifyOptions = {
 
 export default [
   {
-    input: 'src/test.js',
+    input: 'sandbox/test.node.js',
     output: {
       format: 'cjs',
-      file: path.resolve(__dist, 'test.js')
+      file: path.resolve(__dist, 'test.node.js')
     },
 
     plugins: [
-      resolve(resolveOptions),
+      resolve(Object.assign({}, resolveOptions, { preferBuiltins: true })),
 
       commonjs(commonjsOptions),
 
