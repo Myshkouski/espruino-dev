@@ -19,6 +19,292 @@ if (typeof console.error !== 'function') {
   console.error = console.log;
 }
 
+var ON = 1;
+var OFF = 0;
+
+if (process.env.CHIP && process.env.CHIP.toUpperCase() == 'ESP32') {
+  ON = 0;
+  OFF = 1;
+} else {
+  
+}
+
+var defaultTimeout = 20;
+
+var once = function once(led, timeout, cb) {
+  // D5.write(0)
+  // console.log('on')
+  led.write(ON);
+  setTimeout(function () {
+    // D5.write(1)
+    // console.log('off')
+    led.write(OFF);
+    cb && cb();
+  }, timeout || defaultTimeout);
+};
+
+var data = { PN532_PREAMBLE: 0,
+  PN532_STARTCODE1: 0,
+  PN532_STARTCODE2: 255,
+  PN532_POSTAMBLE: 0,
+  PN532_HOST_TO_PN532: 212,
+  PN532_PN532_TO_HOST: 213,
+  PN532_COMMAND_DIAGNOSE: 0,
+  PN532_COMMAND_GETFIRMWAREVERSION: 2,
+  PN532_COMMAND_GETGENERALSTATUS: 4,
+  PN532_COMMAND_READREGISTER: 6,
+  PN532_COMMAND_WRITEREGISTER: 8,
+  PN532_COMMAND_READGPIO: 12,
+  PN532_COMMAND_WRITEGPIO: 14,
+  PN532_COMMAND_SETSERIALBAUDRATE: 16,
+  PN532_COMMAND_SETPARAMETERS: 18,
+  PN532_COMMAND_SAMCONFIGURATION: 20,
+  PN532_COMMAND_POWERDOWN: 22,
+  PN532_COMMAND_RFCONFIGURATION: 50,
+  PN532_COMMAND_RFREGULATIONTEST: 88,
+  PN532_COMMAND_INJUMPFORDEP: 86,
+  PN532_COMMAND_INJUMPFORPSL: 70,
+  PN532_COMMAND_INLISTPASSIVETARGET: 74,
+  PN532_COMMAND_INATR: 80,
+  PN532_COMMAND_INPSL: 78,
+  PN532_COMMAND_INDATAEXCHANGE: 64,
+  PN532_COMMAND_INCOMMUNICATETHRU: 66,
+  PN532_COMMAND_INDESELECT: 68,
+  PN532_COMMAND_INRELEASE: 82,
+  PN532_COMMAND_INSELECT: 84,
+  PN532_COMMAND_INAUTOPOLL: 96,
+  PN532_COMMAND_TGINITASTARGET: 140,
+  PN532_COMMAND_TGSETGENERALBYTES: 146,
+  PN532_COMMAND_TGGETDATA: 134,
+  PN532_COMMAND_TGSETDATA: 142,
+  PN532_COMMAND_TGSETMETADATA: 148,
+  PN532_COMMAND_TGGETINITIATORCOMMAND: 136,
+  PN532_COMMAND_TGRESPONSETOINITIATOR: 144,
+  PN532_COMMAND_TGGETTARGETSTATUS: 138,
+  PN532_COMMAND_WAKEUP: 85,
+  PN532_SPI_STATREAD: 2,
+  PN532_SPI_DATAWRITE: 1,
+  PN532_SPI_DATAREAD: 3,
+  PN532_SPI_READY: 1,
+  PN532_I2C_ADDRESS: 36,
+  PN532_I2C_READBIT: 1,
+  PN532_I2C_BUSY: 0,
+  PN532_I2C_READY: 1,
+  PN532_I2C_READYTIMEOUT: 20,
+  MIFARE_COMMAND_AUTH_A: 96,
+  MIFARE_COMMAND_AUTH_B: 97,
+  MIFARE_COMMAND_READ_16: 48,
+  MIFARE_COMMAND_WRITE_4: 162,
+  MIFARE_COMMAND_WRITE_16: 160,
+  MIFARE_COMMAND_TRANSFER: 176,
+  MIFARE_COMMAND_DECREMENT: 192,
+  MIFARE_COMMAND_INCREMENT: 193,
+  MIFARE_COMMAND_RESTORE: 194,
+  NDEF_URIPREFIX_NONE: 0,
+  NDEF_URIPREFIX_HTTP_WWWDOT: 1,
+  NDEF_URIPREFIX_HTTPS_WWWDOT: 2,
+  NDEF_URIPREFIX_HTTP: 3,
+  NDEF_URIPREFIX_HTTPS: 4,
+  NDEF_URIPREFIX_TEL: 5,
+  NDEF_URIPREFIX_MAILTO: 6,
+  NDEF_URIPREFIX_FTP_ANONAT: 7,
+  NDEF_URIPREFIX_FTP_FTPDOT: 8,
+  NDEF_URIPREFIX_FTPS: 9,
+  NDEF_URIPREFIX_SFTP: 10,
+  NDEF_URIPREFIX_SMB: 11,
+  NDEF_URIPREFIX_NFS: 12,
+  NDEF_URIPREFIX_FTP: 13,
+  NDEF_URIPREFIX_DAV: 14,
+  NDEF_URIPREFIX_NEWS: 15,
+  NDEF_URIPREFIX_TELNET: 16,
+  NDEF_URIPREFIX_IMAP: 17,
+  NDEF_URIPREFIX_RTSP: 18,
+  NDEF_URIPREFIX_URN: 19,
+  NDEF_URIPREFIX_POP: 20,
+  NDEF_URIPREFIX_SIP: 21,
+  NDEF_URIPREFIX_SIPS: 22,
+  NDEF_URIPREFIX_TFTP: 23,
+  NDEF_URIPREFIX_BTSPP: 24,
+  NDEF_URIPREFIX_BTL2CAP: 25,
+  NDEF_URIPREFIX_BTGOEP: 26,
+  NDEF_URIPREFIX_TCPOBEX: 27,
+  NDEF_URIPREFIX_IRDAOBEX: 28,
+  NDEF_URIPREFIX_FILE: 29,
+  NDEF_URIPREFIX_URN_EPC_ID: 30,
+  NDEF_URIPREFIX_URN_EPC_TAG: 31,
+  NDEF_URIPREFIX_URN_EPC_PAT: 32,
+  NDEF_URIPREFIX_URN_EPC_RAW: 33,
+  NDEF_URIPREFIX_URN_EPC: 34,
+  NDEF_URIPREFIX_URN_NFC: 35,
+  PN532_GPIO_VALIDATIONBIT: 128,
+  PN532_GPIO_P30: 0,
+  PN532_GPIO_P31: 1,
+  PN532_GPIO_P32: 2,
+  PN532_GPIO_P33: 3,
+  PN532_GPIO_P34: 4,
+  PN532_GPIO_P35: 5,
+  PN532_SAM_NORMAL_MODE: 1,
+  PN532_SAM_VIRTUAL_CARD: 2,
+  PN532_SAM_WIRED_CARD: 3,
+  PN532_SAM_DUAL_CARD: 4,
+  PN532_BRTY_ISO14443A: 0,
+  PN532_BRTY_ISO14443B: 3,
+  PN532_BRTY_212KBPS: 1,
+  PN532_BRTY_424KBPS: 2,
+  PN532_BRTY_JEWEL: 4,
+  NFC_WAIT_TIME: 30,
+  NFC_COMMAND_BUF_LEN: 64,
+  NFC_FRAME_ID_INDEX: 6 };
+
+var PN532_PREAMBLE = data.PN532_PREAMBLE;
+var PN532_STARTCODE1 = data.PN532_STARTCODE1;
+var PN532_STARTCODE2 = data.PN532_STARTCODE2;
+var PN532_POSTAMBLE = data.PN532_POSTAMBLE;
+var PN532_HOST_TO_PN532 = data.PN532_HOST_TO_PN532;
+var PN532_PN532_TO_HOST = data.PN532_PN532_TO_HOST;
+
+var PN532_COMMAND_GETFIRMWAREVERSION = data.PN532_COMMAND_GETFIRMWAREVERSION;
+
+
+
+
+
+
+
+var PN532_COMMAND_SAMCONFIGURATION = data.PN532_COMMAND_SAMCONFIGURATION;
+
+
+
+
+
+var PN532_COMMAND_INLISTPASSIVETARGET = data.PN532_COMMAND_INLISTPASSIVETARGET;
+
+
+var PN532_COMMAND_INDATAEXCHANGE = data.PN532_COMMAND_INDATAEXCHANGE;
+
+
+
+
+
+
+
+
+
+
+
+
+
+var PN532_COMMAND_WAKEUP = data.PN532_COMMAND_WAKEUP;
+
+
+
+
+var PN532_I2C_ADDRESS = data.PN532_I2C_ADDRESS;
+
+
+
+
+var MIFARE_COMMAND_AUTH_A = data.MIFARE_COMMAND_AUTH_A;
+
+var MIFARE_COMMAND_READ_16 = data.MIFARE_COMMAND_READ_16;
+
+var MIFARE_COMMAND_WRITE_16 = data.MIFARE_COMMAND_WRITE_16;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var PN532_SAM_NORMAL_MODE = data.PN532_SAM_NORMAL_MODE;
+
+
+
+var PN532_BRTY_ISO14443A = data.PN532_BRTY_ISO14443A;
+var PN532_BRTY_ISO14443B = data.PN532_BRTY_ISO14443B;
+
+var check = function check(values) {
+  return !(0xff & -values.reduce(function (sum, value) {
+    return sum + value;
+  }, 0));
+};
+
+var LCS_std = function LCS_std(_ref) {
+  var getFrame = _ref.getFrame;
+  return check(getFrame().slice(-2));
+};
+
+var CHECKSUM_std = function CHECKSUM_std(_ref3) {
+  var getFrame = _ref3.getFrame,
+      getAbsoluteIndex = _ref3.getAbsoluteIndex;
+  return check(getFrame().slice(getAbsoluteIndex(5)));
+};
+
+var BODY_std = function BODY_std(_ref5) {
+  var getFrame = _ref5.getFrame,
+      getAbsoluteIndex = _ref5.getAbsoluteIndex;
+
+  return [getFrame()[getAbsoluteIndex(3)] - 1];
+};
+
+var INFO = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS_std, PN532_PN532_TO_HOST, BODY_std, CHECKSUM_std, PN532_POSTAMBLE]];
+
+
+
+var ERR = [[PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM_std, PN532_POSTAMBLE]];
+
+var ACK = [new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE])];
+
+var NACK = [new Uint8ClampedArray([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff, 0x00, PN532_POSTAMBLE])];
+
+var command = function command(_command) {
+  return new Uint8Array([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff & _command.length + 1, 0xff & ~_command.length, PN532_HOST_TO_PN532].concat(_command, [
+  // checksum
+  0xff & -_command.reduce(function (checksum, byte) {
+    return checksum + byte;
+  }, PN532_HOST_TO_PN532), PN532_POSTAMBLE]));
+};
+
 Object.assign = function (target) {
   for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
     args[_key - 1] = arguments[_key];
@@ -34,6 +320,97 @@ Object.assign = function (target) {
   }
 
   return target;
+};
+
+Array.prototype.concat = function () {
+  var concatenated = [];
+
+  for (var i in this) {
+    concatenated.push(this[i]);
+  }
+
+  for (var _i in arguments) {
+    for (var j in arguments[_i]) {
+      concatenated.push(arguments[_i][j]);
+    }
+  }
+
+  return concatenated;
+};
+
+Promise.race = function (promises) {
+  var Class = this;
+
+  if (!(promises instanceof Array)) throw new TypeError('You must pass an array to Promise.race().');
+
+  return new Class(function (resolve, reject) {
+    for (var i = 0, promise; i < promises.length; i++) {
+      promise = promises[i];
+
+      if (promise && typeof promise.then === 'function') promise.then(resolve, reject);else resolve(promise);
+    }
+  });
+};
+
+// Promise.resolve = function(value) {
+//   var Class = this
+//
+//   if (value && typeof value === 'object' && value.constructor === Class)
+//     return value
+//
+//   return new Class(function(resolve){
+//     resolve(value)
+//   })
+// }
+//
+// Promise.reject = function(reason){
+//   var Class = this
+//
+//   return new Class(function(resolve, reject){
+//     reject(reason)
+//   })
+// }
+//
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+function Buffer() {
+  throw new Error();
+}
+
+//Buffer.from = (iterable, offset, length) => E.toUint8Array(iterable)
+
+Buffer.from = function (iterable, offset, length) {
+  if (typeof iterable == 'string') {
+    var parsed = [];
+
+    for (var c in iterable) {
+      parsed[c] = iterable.charCodeAt(c);
+    }
+
+    return new Uint8Array(parsed);
+  } else if (iterable instanceof ArrayBuffer) {
+    return new Uint8Array(iterable.slice(offset !== undefined ? offset : 0, offset + (length !== undefined ? length : iterable.length)));
+  } else if (iterable instanceof Array || iterable instanceof Uint8Array) {
+    return new Uint8Array(iterable);
+  } else {
+    throw new TypeError('Cannot create buffer from', typeof iterable === 'undefined' ? 'undefined' : _typeof(iterable));
+  }
+};
+
+Buffer.concat = function (_list, _totalLength) {
+  var list = _list || [],
+      totalLength = _totalLength !== undefined ? _totalLength : list.reduce(function (totalLength, array) {
+    return totalLength + array.length;
+  }, 0),
+      buffer = Buffer.from([], 0, totalLength);
+
+  list.reduce(function (offset, buf) {
+    buffer.set(buf, offset);
+    return offset + buf.length;
+  }, 0);
+
+  return buffer;
 };
 
 var defProp = function defProp(obj, prop, desc) {
@@ -57,13 +434,13 @@ var _named = (function (name, f) {
   return f;
 });
 
-var data = { SUPER_CHAIN_PROTO_PROP: "_super",
+var data$2 = { SUPER_CHAIN_PROTO_PROP: "_super",
   SUPER_CHAIN_APPLY_PROP: "_apply",
   PROTOTYPE_IS_EXTENDED_PROP: "_isExtended" };
 
-var SUPER_CHAIN_PROTO_PROP = data.SUPER_CHAIN_PROTO_PROP;
-var SUPER_CHAIN_APPLY_PROP = data.SUPER_CHAIN_APPLY_PROP;
-var PROTOTYPE_IS_EXTENDED_PROP = data.PROTOTYPE_IS_EXTENDED_PROP;
+var SUPER_CHAIN_PROTO_PROP = data$2.SUPER_CHAIN_PROTO_PROP;
+var SUPER_CHAIN_APPLY_PROP = data$2.SUPER_CHAIN_APPLY_PROP;
+var PROTOTYPE_IS_EXTENDED_PROP = data$2.PROTOTYPE_IS_EXTENDED_PROP;
 
 var _copyChain = function _copyChain(Extended, ProtoChain, chainPropName, ignoreExtended) {
   //if chain on [Extended] has not been created yet
@@ -162,97 +539,6 @@ var _extend = function _extend() {
   _copyChain(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
 
   return Extended;
-};
-
-Array.prototype.concat = function () {
-  var concatenated = [];
-
-  for (var i in this) {
-    concatenated.push(this[i]);
-  }
-
-  for (var _i in arguments) {
-    for (var j in arguments[_i]) {
-      concatenated.push(arguments[_i][j]);
-    }
-  }
-
-  return concatenated;
-};
-
-Promise.race = function (promises) {
-  var Class = this;
-
-  if (!(promises instanceof Array)) throw new TypeError('You must pass an array to Promise.race().');
-
-  return new Class(function (resolve, reject) {
-    for (var i = 0, promise; i < promises.length; i++) {
-      promise = promises[i];
-
-      if (promise && typeof promise.then === 'function') promise.then(resolve, reject);else resolve(promise);
-    }
-  });
-};
-
-// Promise.resolve = function(value) {
-//   var Class = this
-//
-//   if (value && typeof value === 'object' && value.constructor === Class)
-//     return value
-//
-//   return new Class(function(resolve){
-//     resolve(value)
-//   })
-// }
-//
-// Promise.reject = function(reason){
-//   var Class = this
-//
-//   return new Class(function(resolve, reject){
-//     reject(reason)
-//   })
-// }
-//
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-function Buffer() {
-  throw new Error();
-}
-
-//Buffer.from = (iterable, offset, length) => E.toUint8Array(iterable)
-
-Buffer.from = function (iterable, offset, length) {
-  if (typeof iterable == 'string') {
-    var parsed = [];
-
-    for (var c in iterable) {
-      parsed[c] = iterable.charCodeAt(c);
-    }
-
-    return new Uint8Array(parsed);
-  } else if (iterable instanceof ArrayBuffer) {
-    return new Uint8Array(iterable.slice(offset !== undefined ? offset : 0, offset + (length !== undefined ? length : iterable.length)));
-  } else if (iterable instanceof Array || iterable instanceof Uint8Array) {
-    return new Uint8Array(iterable);
-  } else {
-    throw new TypeError('Cannot create buffer from', typeof iterable === 'undefined' ? 'undefined' : _typeof(iterable));
-  }
-};
-
-Buffer.concat = function (_list, _totalLength) {
-  var list = _list || [],
-      totalLength = _totalLength !== undefined ? _totalLength : list.reduce(function (totalLength, array) {
-    return totalLength + array.length;
-  }, 0),
-      buffer = Buffer.from([], 0, totalLength);
-
-  list.reduce(function (offset, buf) {
-    buffer.set(buf, offset);
-    return offset + buf.length;
-  }, 0);
-
-  return buffer;
 };
 
 var loop = [
@@ -553,6 +839,28 @@ BufferState.prototype = {
   }
 };
 
+function series(arr, cb, done) {
+  var i = 0;
+  var aborted = false;
+  (function next(res) {
+    if (!aborted) {
+      if (typeof res !== 'undefined' || i >= arr.length) {
+        done && done(res);
+      } else {
+        setImmediate(function () {
+          try {
+            cb(next, arr[i], i++, arr);
+          } catch (err) {
+            next(err);
+            aborted = true;
+          }
+        });
+      }
+    }
+  })();
+}
+
+//import Schedule from 'schedule'
 var DEFAULT_HIGHWATERMARK = 64;
 // const defaultWatcher = {
 //   cache: {},
@@ -573,6 +881,7 @@ function decrementActive() {
 function _resetWatcher(watcher) {
   watcher.currentPattern = null;
   watcher.arrayOffset = watcher.patternIndex = watcher.byteIndex = watcher.length = 0;
+
   watcher.active = false;
 
   return watcher;
@@ -624,11 +933,11 @@ function _parse() {
 
       var byte = chunk[currentChunkIndex];
 
-      for (watcherIndex = 0; watcherIndex < watching.length; watcherIndex++, isEqual = false) {
+      var _loop = function _loop() {
         var watcher = watching[watcherIndex];
 
         if (!watcher.active) {
-          continue;
+          return 'continue';
         }
 
         var expected = watcher.currentPattern[watcher.byteIndex];
@@ -647,16 +956,50 @@ function _parse() {
 
           if (--watcher.arrayOffset > 0) {
             watcher.length++;
-            continue;
+            return 'continue';
           }
 
           isEqual = true;
         } else if (typeof expected == 'function') {
           try {
-            isEqual = !!expected.call(this, byte, watcher.length, this._busState.slice(1 + watcher.length));
+            isEqual = !!expected.call(_this, {
+              byte: byte,
+              index: watcher.byteIndex,
+              getRelativeIndex: function getRelativeIndex(index) {
+                if (typeof index != 'number') {
+                  throw TypeError('number');
+                }
+
+                index += watcher.byteIndex;
+
+                if (index < 0 || index > watcher.currentPattern.length) {
+                  throw ReferenceError('Illegal pattern boundaries');
+                }
+
+                return index + watcher.length - watcher.byteIndex;
+              },
+              getAbsoluteIndex: function getAbsoluteIndex(index) {
+                if (typeof index != 'number') {
+                  throw TypeError('number');
+                }
+
+                if (index < 0) {
+                  index += watcher.currentPattern.length;
+                }
+
+                if (index < 0 || index > watcher.currentPattern.length) {
+                  throw ReferenceError('Illegal pattern boundaries');
+                }
+
+                return index + watcher.length - watcher.byteIndex;
+              },
+              getFrame: function getFrame() {
+                return _this._busState.slice(1 + watcher.length);
+              }
+            });
           } catch (err) {
             isEqual = false;
-            this.emit('error', err);
+            _this.emit('error', err);
           }
         }
 
@@ -667,9 +1010,9 @@ function _parse() {
             if (++watcher.patternIndex >= watcher.patterns.length) {
               // console.time( 'buffer' )
               // console.log(watcher.callback)
-              var _chunk = this._busState.buffer(watcher.length);
+              var _chunk = _this._busState.buffer(watcher.length);
               // console.timeEnd( 'buffer' )
-              this._busState.nodeIndex = -1;
+              _this._busState.nodeIndex = -1;
               try {
                 // console.time( 'cb' )
                 watcher.callback(_chunk,
@@ -677,7 +1020,7 @@ function _parse() {
                 watcher.pattern);
                 // console.timeEnd( 'cb' )
               } catch (err) {
-                this.emit('error', err);
+                _this.emit('error', err);
               }
               // this._busState.watching = []
               // console.time( 'reset' )
@@ -693,26 +1036,27 @@ function _parse() {
 
               try {
                 if (typeof nextPattern == 'function') {
-                  watcher.currentPattern = nextPattern.call(this, this._busState.slice(watcher.length));
+                  watcher.currentPattern = nextPattern.call(_this, _this._busState.slice(watcher.length));
                 } else {
                   watcher.currentPattern = nextPattern;
                 }
               } catch (err) {
                 _resetWatcher(watcher);
-                decrementActive.call(this);
-                this.emit('error', err);
+                decrementActive.call(_this);
+                _this.emit('error', err);
               }
               // console.timeEnd('next pattern')
             }
           }
         } else {
+          console.log(watcher);
           _resetWatcher(watcher);
-          decrementActive.call(this);
+          decrementActive.call(_this);
 
-          if (!this._busState.active) {
-            this.emit('error', {
+          if (!_this._busState.active) {
+            _this.emit('error', {
               msg: 'Unparsed chunk',
-              data: this._busState.buffer() // frame.splice(0)
+              data: _this._busState.buffer() // frame.splice(0)
             });
             //
             // if(!isChunkCorrupted) {
@@ -727,6 +1071,12 @@ function _parse() {
             // }
           }
         }
+      };
+
+      for (watcherIndex = 0; watcherIndex < watching.length; watcherIndex++, isEqual = false) {
+        var _ret = _loop();
+
+        if (_ret === 'continue') continue;
       }
     }
   }
@@ -885,264 +1235,260 @@ _Bus.prototype = {
   }
 };
 
-var Bus = _extend({
+var Bus$1 = _extend({
   super: [_Bus, EventEmitter],
   apply: [_Bus, EventEmitter]
 });
 
-var preamble = [1, 2, 3];
-var postamble = [4, function () {
-  for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-    args[_key] = arguments[_key];
+var parseInfo = function parseInfo(chunk) {
+  return {
+    raw: chunk,
+    code: chunk[6],
+    body: Buffer.from(chunk.slice(7, 5 + chunk[3]))
+  };
+};
+
+var parseBlockData = function parseBlockData(data$$1) {
+  if (data$$1.body.length == 1) {
+    throw {
+      cmd: data$$1.code,
+      errCode: data$$1.body[0]
+    };
+  } else {
+    return {
+      chunk: data$$1.body.slice(1)
+    };
   }
+};
 
-  console.log(args);
-  return true;
-}, 6];
+var NfcBus = {
+  makeTransaction: function makeTransaction(cmd, info, parsers) {
+    var _this = this;
 
-var bus = new Bus({
-  read: function read() {},
-  write: function write() {},
-  setup: function setup() {}
+    return new Promise(function (done, fail) {
+      // Don't be silly again - info frame refers to index from beginning, i.e. to ACK
+      // this.rx([...ACK, ...info], chunk => done((parsers || [sliceAck, parseInfo]).reduce((data, parse) => parse(data), chunk)))
+      _this.rx(ACK, function () {
+        _this.rx(info, function (chunk) {
+          return done((parsers || [parseInfo]).reduce(function (data$$1, parse) {
+            return parse(data$$1);
+          }, chunk));
+        });
+      });
+
+      _this.rx(NACK, fail);
+      _this.rx(ERR, fail);
+
+      _this.tx(command(cmd));
+    }).catch(function (err) {
+      _this.unwatch();
+      throw err;
+    }).then(function (data$$1) {
+      _this.unwatch();
+      return data$$1;
+    });
+  },
+  findTargets: function findTargets(count, type) {
+    if (type == 'A') {
+      type = PN532_BRTY_ISO14443A;
+    } else if (type == 'B') {
+      type = PN532_BRTY_ISO14443B;
+    } else {
+      throw new Error('Unknown ISO14443 type:', type);
+    }
+
+    return this.makeTransaction([PN532_COMMAND_INLISTPASSIVETARGET, count, type], INFO, [function (chunk) {
+      var body = chunk.slice(7, 5 + chunk[3]);
+      var uid = body.slice(6, 6 + body[5]);
+      return {
+        code: chunk[6],
+        body: body,
+        count: body[0],
+        atqa: body.slice(2, 4), // SENS_RES
+        sak: body[4],
+        uid: uid
+      };
+    }]);
+  },
+  authenticate: function authenticate(block, uid, key) {
+    return this.makeTransaction([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_COMMAND_AUTH_A, block].concat([].slice.call(key), [].slice.call(uid)), INFO);
+  },
+  readBlock: function readBlock(block) {
+    return this.makeTransaction([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_COMMAND_READ_16, block], INFO, [parseInfo, parseBlockData]);
+  },
+  writeBlock: function writeBlock(block, chunk) {
+    return this.makeTransaction([PN532_COMMAND_INDATAEXCHANGE, 1, MIFARE_COMMAND_WRITE_16, block].concat([].slice.call(chunk)), INFO);
+  },
+  readSector: function readSector(sector) {
+    var _this2 = this;
+
+    return new Promise(function (done, fail) {
+      var readBlocksArr = [];
+      for (var block = sector * 4; block < sector * 4 + 3; block++) {
+        readBlocksArr.push(block);
+      }
+
+      series(readBlocksArr, function (next, block, index) {
+        _this2.readBlock(block).then(function (data$$1) {
+          readBlocksArr[index] = data$$1;
+          next();
+        }).catch(function (err) {
+          console.log('!!!');
+          next(err);
+        });
+      }, function (err) {
+        return err ? fail(err) : done(readBlocksArr);
+      });
+    });
+  },
+  writeSector: function writeSector(start, chunk) {}
+};
+
+var Bus = (function (options) {
+  return Object.assign(new Bus$1(options), NfcBus);
 });
 
-bus.on('error', console.error);
+var wakeup = command([PN532_COMMAND_WAKEUP]);
+var sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
 
-bus.rx([preamble, postamble], console.log);
+// [0, 0, 255, 0, 255, 0]
+// [0, 0, 255, 6, 250, 213, 3, 50, 1, 6, 7, 232, 0]
 
-bus.push(preamble);
+// [0, 0, 255, 0, 255, 0, 2, 42, 1, 6, 7, 232, 0, 0, 0, ]
 
-// // import Bus from 'bus'
-// // import Schedule from 'schedule'
-// import * as Blink from 'blink'
-// import {
-//   command,
-//   ACK,
-//   NACK,
-//   INFO,
-//   XINFO
-// } from 'nfc'
-// import Bus from 'nfc/bus'
-// import {
-//   PN532_I2C_ADDRESS,
-//   PN532_COMMAND_SAMCONFIGURATION,
-//   PN532_SAM_NORMAL_MODE,
-//   PN532_COMMAND_WRITEGPIO,
-//   PN532_COMMAND_INLISTPASSIVETARGET,
-//   PN532_COMMAND_INDATAEXCHANGE,
-//   PN532_COMMAND_GETFIRMWAREVERSION,
-//   PN532_COMMAND_WAKEUP,
-//   MIFARE_COMMAND_READ_16,
-//   MIFARE_COMMAND_AUTH_A,
-//   MIFARE_COMMAND_AUTH_B,
-//   MIFARE_COMMAND_WRITE_4,
-//   MIFARE_COMMAND_WRITE_16
-// } from 'nfc/constants'
-//
-// import {
-//   encodeMessage,
-//   decodeMessage,
-//   textRecord
-// } from 'esp-ndef'
-//
-// // let usbConsole = true
-// // let consoleBus = null
-// // let log = ''
-// //
-// //
-// // function toggleConsole() {
-// //   usbConsole = !usbConsole
-// //   if (usbConsole) {
-// //     consoleBus = null
-// //     USB.removeAllListeners()
-// //   } else {
-// //     consoleBus = new Bus({
-// //       setup() {
-// //         USB.on('data', data => {
-// //           this.parse.call(this, data)
-// //           USB.setup()
-// //           // USB.write(Buffer.from(['!', ...[].slice.call(data, 0)]))
-// //         })
-// //       },
-// //       read() {},
-// //       write() {}
-// //     })
-// //
-// //     consoleBus.rx([Buffer.from('/on')], () => {
-// //       Blink.once(LED1)
-// //       USB.write(JSON.stringify(consoleBus._busState))
-// //       // toggleConsole()
-// //     })
-// //
-// //     // consoleBus.rx([Buffer.from('/off')], () => {
-// //     //   LED1.write(1)
-// //     //   // USB.write('/off\r\n')
-// //     //   // toggleConsole()
-// //     // })
-// //     //
-// //     // consoleBus.on('error', err => {
-// //     //   Blink.once(LED1, 200)
-// //     // })
-// //
-// //     consoleBus.setup()
-// //   }
-// //
-// //   usbConsole ?
-// //     USB.setConsole(false) :
-// //     LoopbackA.setConsole(false)
-// // }
-// //
-// // toggleConsole()
-//
-// // setWatch( toggleConsole, BTN1, {
-// //   repeat: true,
-// //   edge: 'rising',
-// //   debounce: 50
-// // } )
-// //
-// // Blink.start( LED2 )
-// //
-// // const encoded = encodeMessage( [
-// //   textRecord( '2enhello world!' )
-// // ] )
-// //
-// // import fs from 'fs'
-//
-// const wakeup = command([PN532_COMMAND_WAKEUP])
-// const sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0])
-//
-// // [0, 0, 255, 0, 255, 0]
-// // [0, 0, 255, 6, 250, 213, 3, 50, 1, 6, 7, 232, 0]
-//
-// // [0, 0, 255, 0, 255, 0, 2, 42, 1, 6, 7, 232, 0, 0, 0, ]
-//
-// // [1, 0, 0, 255, 0, 255, 0, 2, 42, 0, 0, 0, 0, 0, 0, 0]
-// // [1, 0, 0, 255, 6, 250, 213, 3, 50, 1, 6, 7, 232, 0, 0, 0]
-//
-// function setup() {
-//   if(this.type == 'serial') {
-//     this.transport.setup(115200)
-//
-//     this.transport.write(wakeup)
-//     this.transport.write(sam)
-//
-//     setTimeout(() => {
-//       this.transport.on('data', data => this.push(data))
-//       console.log('Bus has been set up')
-//       Blink.once(LED1, 20, () => {
-//         setTimeout(() => Blink.once(LED1, 20), 200)
+// [1, 0, 0, 255, 0, 255, 0, 2, 42, 0, 0, 0, 0, 0, 0, 0]
+// [1, 0, 0, 255, 6, 250, 213, 3, 50, 1, 6, 7, 232, 0, 0, 0]
+
+function setup() {
+  var _this = this;
+
+  if (this.type == 'serial') {
+    this.transport.setup(115200);
+
+    this.transport.write(wakeup);
+    this.transport.write(sam);
+
+    setTimeout(function () {
+      _this.transport.read();
+      _this.transport.on('data', function (data) {
+        return _this.push(data);
+      });
+      console.log('Bus has been set up');
+      once(LED1, 20, function () {
+        setTimeout(function () {
+          return once(LED1, 20);
+        }, 200);
+      });
+
+      _this.rx([].concat(ACK, INFO), function (frame) {
+        console.log('frame');
+        console.log(frame);
+      });
+
+      _this.tx(command([PN532_COMMAND_GETFIRMWAREVERSION]));
+    }, 500);
+  } else if (this.type == 'i2c') {
+    this.transport.setup({
+      bitrate: 400 * 1000
+    });
+
+    this.on('drain', function () {
+      _this._read();
+    });
+
+    try {
+      this.tx(1);
+    } catch (err) {
+      console.log('Handled', err.msg);
+      console.log('Continue...');
+    }
+
+    this.tx(command([PN532_COMMAND_GETFIRMWAREVERSION]));
+
+    this.rx([].concat(ACK, INFO), {
+      timeout: 10
+    }, function (frame) {
+      console.log('frame');
+      console.log(frame);
+    });
+  }
+}
+
+var bus = new Bus({
+  transport: Serial1,
+  type: 'serial',
+  setup: setup,
+  read: function read(length) {
+    if (this.type == 'i2c') {
+      while (true) {
+        if (this.transport.readFrom(PN532_I2C_ADDRESS, 1)[0]) {
+          var chunk = this.transport.readFrom(PN532_I2C_ADDRESS, 1 + length);
+          this.push(chunk);
+        } else {
+          break;
+        }
+      }
+    } else if (this.type == 'serial') {
+      // const chunk = this.transport.read(length)
+      // this.push(chunk)
+    }
+  },
+  write: function write(chunk) {
+    if (this.type == 'serial') {
+      this.transport.write(chunk);
+    } else if (this.type == 'i2c') {
+      this.transport.writeTo(PN532_I2C_ADDRESS, chunk);
+    }
+  },
+
+  highWaterMark: 16
+});
+
+bus.on('error', function (err) {
+  console.error('BusError:', err);
+});
+
+bus.setup();
+
+// const key = new Uint8  Array(Array(6).fill(0xff))
+
+// console.log(key)
+
+
+// setTimeout(() => {
+//   (function poll() {
+//     // console.log(process.memory().free)
+//     // console.log(bus._busState.watching.length)
+//     Promise.resolve()
+//       .then(() => bus.findTargets(1, 'A')) // .then(data => { console.log('found card', data.uid); return data })
+//       .then(data => {
+//         LED1.write(0)
+//         return data
 //       })
-//
-//       this.rx([
-//         ...ACK,
-//         ...INFO
-//       ], frame => {
-//         console.log('frame')
-//         console.log(frame)
+//       // .then(data => bus.authenticate(4, data.uid, key).then(data => { console.log('auth op 4:', data) }).then(() => bus.authenticate(3, data.uid, key).then(data => { console.log('auth op:', data) })))
+//       .then(data => bus.authenticate(1 * 4, data.uid, key)) // .then(data => { console.log('auth', data) })
+//       // .then(data => bus.writeBlock(4, [1, 3, 6, 4])).then(data => { console.log('write op:', data) })
+//       // .then(data => { console.time('reading 2 sector'); return data })
+//       .then(data => bus.readSector(1))
+//       .then(data => {
+//         LED1.write(1)
+//         return data
+//       }) // .then(data => { console.log('sector 2:', data); return data })
+//       .then(data => data.reduce((buffer, data) => [...buffer, ...[].slice.call(data.chunk, 0)], []))
+//       .then(console.log)
+//       // .then(data => { console.timeEnd('reading 2 sector'); return data })
+//       // .then(data => bus.readBlock(4)).then(data => { console.log('block 4:', data) })
+//       // .then(data => bus.readBlock(5)).then(data => { console.log('block 5:', data) })
+//       // .then(data => bus.readBlock(6)).then(data => { console.log('block 6:', data) })
+//       // .then(data => bus.readBlock(7)).then(data => { console.log('block 7:', data) })
+//       .catch(err => {
+//         LED1.write(1)
+//         console.error('Error:', err)
 //       })
-//
-//       this.tx(command([PN532_COMMAND_GETFIRMWAREVERSION]))
-//     }, 500)
-//   } else if (this.type == 'i2c') {
-//     this.transport.setup({ bitrate: 400*1000 })
-//
-//     this.on('drain', () => {
-//       this._read()
-//     })
-//
-//     try {
-//       this.tx(1)
-//     } catch(err) {
-//       console.log('Handled', err.msg)
-//       console.log('Continue...')
-//     }
-//
-//     this.tx(command([PN532_COMMAND_GETFIRMWAREVERSION]))
-//
-//     this.rx([
-//       ...ACK,
-//       ...INFO
-//     ], { timeout: 10 }, frame => {
-//       console.log('frame')
-//       console.log(frame)
-//     })
-//   }
-// }
-//
-// const bus = new Bus({
-//   transport: Serial1,
-//   type: 'serial',
-//   setup,
-//   read(length) {
-//     if(this.type == 'i2c') {
-//       while(true) {
-//         if(this.transport.readFrom(PN532_I2C_ADDRESS, 1)[0]) {
-//           const chunk = this.transport.readFrom(PN532_I2C_ADDRESS, 1 + length)
-//           this.push(chunk)
-//         } else {
-//           break
-//         }
-//       }
-//     } else if(this.type == 'serial') {
-//       // const chunk = this.transport.read(length)
-//       // this.push(chunk)
-//     }
-//   },
-//   write(chunk) {
-//     if(this.type == 'serial') {
-//       this.transport.write(chunk)
-//     } else if(this.type == 'i2c') {
-//       this.transport.writeTo(PN532_I2C_ADDRESS, chunk)
-//     }
-//   },
-//   highWaterMark: 16
-// })
-//
-// bus.on('error', err => {
-//   console.error('BusError:', err)
-// })
-//
-// bus.setup()
-//
-// // const key = new Uint8  Array(Array(6).fill(0xff))
-//
-// // console.log(key)
-//
-//
-// // setTimeout(() => {
-// //   (function poll() {
-// //     // console.log(process.memory().free)
-// //     // console.log(bus._busState.watching.length)
-// //     Promise.resolve()
-// //       .then(() => bus.findTargets(1, 'A')) // .then(data => { console.log('found card', data.uid); return data })
-// //       .then(data => {
-// //         LED1.write(0)
-// //         return data
-// //       })
-// //       // .then(data => bus.authenticate(4, data.uid, key).then(data => { console.log('auth op 4:', data) }).then(() => bus.authenticate(3, data.uid, key).then(data => { console.log('auth op:', data) })))
-// //       .then(data => bus.authenticate(1 * 4, data.uid, key)) // .then(data => { console.log('auth', data) })
-// //       // .then(data => bus.writeBlock(4, [1, 3, 6, 4])).then(data => { console.log('write op:', data) })
-// //       // .then(data => { console.time('reading 2 sector'); return data })
-// //       .then(data => bus.readSector(1))
-// //       .then(data => {
-// //         LED1.write(1)
-// //         return data
-// //       }) // .then(data => { console.log('sector 2:', data); return data })
-// //       .then(data => data.reduce((buffer, data) => [...buffer, ...[].slice.call(data.chunk, 0)], []))
-// //       .then(console.log)
-// //       // .then(data => { console.timeEnd('reading 2 sector'); return data })
-// //       // .then(data => bus.readBlock(4)).then(data => { console.log('block 4:', data) })
-// //       // .then(data => bus.readBlock(5)).then(data => { console.log('block 5:', data) })
-// //       // .then(data => bus.readBlock(6)).then(data => { console.log('block 6:', data) })
-// //       // .then(data => bus.readBlock(7)).then(data => { console.log('block 7:', data) })
-// //       .catch(err => {
-// //         LED1.write(1)
-// //         console.error('Error:', err)
-// //       })
-// //       .then(() => {
-// //         setTimeout(() => {
-// //           poll()
-// //         }, 500)
-// //       })
-// //   })()
-// // }, 1000)
+//       .then(() => {
+//         setTimeout(() => {
+//           poll()
+//         }, 500)
+//       })
+//   })()
+// }, 1000)
