@@ -559,13 +559,16 @@ BufferState.prototype = {
       return offset + node.chunk.length;
     }, 0);
     // console.timeEnd('offset')
+
     if (offset < length) {
       var node = this.nodes(1)[0];
 
       buffer.set(node.chunk.slice(0, length - offset), offset);
-      node.chunk = node.chunk.slice(length - offset);
+      if (length - offset < node.chunk.length) {
+        node.chunk = node.chunk.slice(length - offset);
 
-      this.unshift(node.chunk);
+        this.unshift(node.chunk);
+      }
     }
 
     return buffer;
@@ -597,26 +600,15 @@ function series(arr, cb, done) {
 var DEFAULT_HIGHWATERMARK = 64;
 
 function _resetWatcher(watcher) {
-  watcher.currentPattern = null;
-  watcher.arrayOffset = watcher.patternIndex = watcher.byteIndex = watcher.index = 0;
-  watcher.active = false;
-
-  return watcher;
-
-  // return Object.assign(watcher, defaultWatcher)
+  return Object.assign(watcher, {
+    active: false,
+    currentPattern: null,
+    length: 0,
+    offset: 0,
+    byteIndex: 0,
+    patternIndex: 0
+  });
 }
-
-// function Watcher(bus) {
-//   _resetWatcher(this)
-//
-//
-// }
-//
-// Watcher.prototype = {
-//   rx() {
-//
-//   }
-// }
 
 function _resetActive() {
   this._busState.active = 0;
@@ -627,6 +619,51 @@ function _decrementActive() {
   if (! --this._busState.active) {
     this.emit('inactive');
   }
+}
+
+function _nextPattern(watcher) {
+  if (1 + watcher.patternIndex < watcher.list.length) {
+    // console.time('next pattern')
+    var nextPattern = watcher.list[++watcher.patternIndex /* patternIndex has already been incremented when checked condition */];
+    watcher.byteIndex = 0;
+
+    if (typeof nextPattern == 'function') {
+      try {
+        watcher.currentPattern = nextPattern.call(this, this._busState.slice(watcher.length));
+      } catch (err) {
+        _resetWatcher(watcher);
+        _decrementActive.call(this);
+        this.emit('error', err);
+      }
+    } else {
+      watcher.currentPattern = nextPattern;
+    }
+    // console.timeEnd('next pattern')
+  } else {
+    _found.call(this, watcher);
+  }
+}
+
+function _found(watcher) {
+  var _busState = this._busState;
+  var watching = _busState.watching;
+
+  var chunk = _busState.buffer(watcher.length);
+  _busState.nodeIndex = -1;
+  try {
+    // console.time( 'cb' )
+    watcher.callback(chunk,
+    // frame.splice(-watcher.length),
+    watcher.pattern);
+    // console.timeEnd( 'cb' )
+  } catch (err) {
+    this.emit('error', err);
+  }
+  // _busState.watching = []
+  // console.time( 'reset' )
+  watching.forEach(_resetWatcher);
+  _resetActive.call(this);
+  // console.timeEnd( 'reset' )
 }
 
 function _push() {
@@ -658,10 +695,10 @@ function _push() {
     for (; currentChunkIndex < chunk.length; currentChunkIndex++) {
       if (!_busState.active) {
         _busState.active = _busState.watching.reduce(function (active, watcher) {
-          var patterns = watcher.patterns;
+          var list = watcher.list;
 
           try {
-            watcher.currentPattern = typeof patterns[0] == 'function' ? patterns[0](_busState.slice(watcher.length)) : patterns[0];
+            watcher.currentPattern = typeof list[0] == 'function' ? list[0](_busState.slice(watcher.length)) : list[0];
             watcher.active = true;
             return 1 + active;
           } catch (err) {
@@ -680,7 +717,7 @@ function _push() {
         }
 
         var currentPattern = watcher.currentPattern;
-
+        // let isEqual = false
 
         if (Array.isArray(currentPattern)) {
           var expected = currentPattern[watcher.byteIndex];
@@ -694,9 +731,29 @@ function _push() {
             isEqual = true;
           } else if (typeof expected == 'function') {
             try {
-              isEqual = !!expected.call(this, byte, watcher.index /*i.e. index*/, _busState.slice(watcher.index /*i.e. actual length*/));
+              isEqual = !!expected.call(this, byte, watcher.length /*i.e. index*/, _busState.slice(watcher.length /*i.e. actual length*/));
             } catch (err) {
               this.emit('error', err);
+            }
+          }
+
+          if (isEqual) {
+            ++watcher.length;
+
+            if (1 + watcher.byteIndex < currentPattern.length) {
+              ++watcher.byteIndex;
+            } else {
+              _nextPattern.call(this, watcher);
+            }
+          } else {
+            _resetWatcher(watcher);
+            _decrementActive.call(this);
+
+            if (!_busState.active) {
+              this.emit('error', {
+                msg: 'Unparsed chunk',
+                data: _busState.buffer()
+              });
             }
           }
         } else if (typeof currentPattern == 'number') {
@@ -704,83 +761,14 @@ function _push() {
             throw new RangeError('Pattern length should be a positive integer, but set to', currentPattern);
           }
 
-          if (watcher.arrayOffset <= 0) {
-            watcher.arrayOffset = currentPattern;
+          if (watcher.offset <= 0) {
+            watcher.offset = currentPattern;
           }
 
-          console.log(--watcher.arrayOffset);
+          watcher.length++;
 
-          if (--watcher.arrayOffset > 0) {
-            watcher.index++;
-            continue;
-          }
-
-          isEqual = true;
-        }
-
-        if (isEqual) {
-          watcher.index++;
-
-          if (++watcher.byteIndex >= currentPattern.length) {
-            if (++watcher.patternIndex >= watcher.patterns.length) {
-              // console.time( 'buffer' )
-              // console.log(watcher.callback)
-              var _chunk = _busState.buffer(watcher.index);
-              // console.timeEnd( 'buffer' )
-              _busState.nodeIndex = -1;
-              try {
-                // console.time( 'cb' )
-                watcher.callback(_chunk,
-                // frame.splice(-watcher.index),
-                watcher.pattern);
-                // console.timeEnd( 'cb' )
-              } catch (err) {
-                this.emit('error', err);
-              }
-              // _busState.watching = []
-              // console.time( 'reset' )
-              watching.forEach(_resetWatcher);
-              _resetActive.call(this);
-              // console.timeEnd( 'reset' )
-            } else {
-              // console.time('next pattern')
-              var nextPattern = watcher.patterns[watcher.patternIndex];
-              watcher.byteIndex = 0;
-
-              if (typeof nextPattern == 'function') {
-                try {
-                  watcher.currentPattern = nextPattern.call(this, _busState.slice(watcher.length));
-                } catch (err) {
-                  _resetWatcher(watcher);
-                  _decrementActive.call(this);
-                  this.emit('error', err);
-                }
-              } else {
-                watcher.currentPattern = nextPattern;
-              }
-              // console.timeEnd('next pattern')
-            }
-          }
-        } else {
-          _resetWatcher(watcher);
-          _decrementActive.call(this);
-
-          if (!_busState.active) {
-            this.emit('error', {
-              msg: 'Unparsed chunk',
-              data: _busState.buffer() // frame.splice(0)
-            });
-            //
-            // if(!isChunkCorrupted) {
-            //   isChunkCorrupted = true
-            //   setImmediate(() => {
-            //     isChunkCorrupted = false
-            //     this.emit('error', {
-            //       msg: 'Unparsed chunk',
-            //       data: frame.splice(0)
-            //     })
-            //   })
-            // }
+          if (--watcher.offset < 1) {
+            _nextPattern.call(this, watcher);
           }
         }
       }
@@ -862,9 +850,9 @@ _Bus$1.prototype = {
     //   parse(chunk)
     // }
   },
-  watch: function watch(patterns, cb) {
+  watch: function watch(list, cb) {
     var watcher = _resetWatcher({
-      patterns: patterns,
+      list: list,
       callback: cb.bind(this)
     });
 
@@ -897,7 +885,7 @@ _Bus$1.prototype = {
     @TODO Promise interface
   */
 
-  expect: function expect(patterns) {
+  expect: function expect(list) {
     var _this4 = this;
 
     for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -918,7 +906,7 @@ _Bus$1.prototype = {
 
     var watcher = void 0;
     var setWatcher = function setWatcher() {
-      watcher = _this4.watch(patterns, function () {
+      watcher = _this4.watch(list, function () {
         for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
           args[_key2] = arguments[_key2];
         }

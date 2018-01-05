@@ -31,13 +31,15 @@ const bus = new Bus({ transport, read(length) {
 bus.setup()
 
 bus.expect([
-  preamble,
-  2,
-  postamble
+  6
+  // preamble,
+  // // 2,
+  // postamble
 ], data => {
   console.warn('incoming', data)
 })
 
 bus.push(preamble)
-bus.push([1, 2])
+// bus.push([1, 2])
 bus.push(postamble)
+// bus.push('unexpected')
