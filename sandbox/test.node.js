@@ -17,23 +17,27 @@ const transport = {
 const preamble = [1, 2, 3]
 const postamble = [4, 5, 6]
 
-const bus = new Bus({ read() {
-  console.log(this)
+const bus = new Bus({ transport, read(length) {
   const chunk = this.transport.read(length)
-  return chunk
+
+  this.push(chunk)
 }, write(chunk) {
   this.transport.write(chunk)
 }, setup() {
   this.on('error', console.error)
+  this.on('drain', console.log.bind(this, 'drain'))
 } })
 
-bus.setup({
-  transport
+bus.setup()
+
+bus.expect([
+  preamble,
+  2,
+  postamble
+], data => {
+  console.warn('incoming', data)
 })
 
-bus.rx([frame => {
-  console.log(frame)
-  return [[preamble.length]]
-}], console.warn)
-
-bus.tx(preamble)
+bus.push(preamble)
+bus.push([1, 2])
+bus.push(postamble)
