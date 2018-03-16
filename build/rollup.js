@@ -17,35 +17,36 @@ import progress from 'rollup-plugin-progress'
 import filesize from 'rollup-plugin-filesize'
 import typeOf from 'rollup-plugin-inline-typeof'
 
-const __approot = path.resolve(__dirname, '../')
-const __lib = path.resolve(__approot, 'lib')
-const __helpers = path.resolve(__approot, 'helpers')
-const __globals = path.resolve(__approot, 'globals')
-const __dist = path.resolve(__approot, 'bundle')
-const __src = path.resolve(__approot, 'src')
-const input = path.resolve(__src, 'index.js')
+const __approot = path.resolve( __dirname, '../' )
+const __lib = path.resolve( __approot, 'lib' )
+const __helpers = path.resolve( __approot, 'helpers' )
+const __globals = path.resolve( __approot, 'globals' )
+const __dist = path.resolve( __approot, 'bundle' )
+const __src = path.resolve( __approot, 'src' )
+const input = path.resolve( __src, 'index.js' )
 
 const bundlerName = 'rollup'
 const targetPlatform = 'esp'
 
 const espPolyfills = {
   modules: {
-    'Object': path.resolve(__globals, 'object.js'),
-    'Array': path.resolve(__globals, 'array.js'),
-    'Promise': path.resolve(__globals, 'promise.js'),
-    'Buffer': path.resolve(__globals, 'buffer.js'),
+    'Object': path.resolve( __globals, 'object.js' ),
+    'Array': path.resolve( __globals, 'array.js' ),
+    'Promise': path.resolve( __globals, 'promise.js' ),
+    'Buffer': path.resolve( __globals, 'buffer.js' ),
+    'ArrayBuffer': path.resolve( __globals, 'arrayBuffer.js' ),
     //'process': path.resolve(__globals, 'process.js'),
-    'console': path.resolve(__globals, 'console.js')
+    'console': path.resolve( __globals, 'console.js' )
   }
 }
 
 const injectPolyfillExcludeNM = {
   exclude: '/node_modules/**',
   modules: {
-    '_extend': [path.resolve(__globals, 'extend/index.js'), '_extend'],
-    'extend': [path.resolve(__globals, 'extend/index.js'), 'extend'],
-    '_named': path.resolve(__globals, 'namedFunction.js'),
-    'iof': path.resolve(__globals, 'iof.js')
+    '_extend': [ path.resolve( __globals, 'extend/index.js' ), '_extend' ],
+    'extend': [ path.resolve( __globals, 'extend/index.js' ), 'extend' ],
+    '_named': path.resolve( __globals, 'namedFunction.js' ),
+    'iof': path.resolve( __globals, 'iof.js' )
   }
 }
 
@@ -53,7 +54,7 @@ const injectEventLoopOptions = {
   exclude: `${ path.resolve(__lib, 'event-loop.js') }/**`,
   modules: {
     //'setTimeout': [path.resolve(__globals, 'event-loop.js'), 'setTimeout'],
-    'setImmediate': [path.resolve(__globals, 'event-loop.js'), 'setImmediate'],
+    'setImmediate': [ path.resolve( __globals, 'event-loop.js' ), 'setImmediate' ],
     //'setInterval': [path.resolve(__globals, 'event-loop.js'), 'setInterval']
   }
 }
@@ -70,24 +71,24 @@ const replaceInstanceOf = {
 }
 
 const aliasedNodeModules = {
-  'ndef': path.resolve(__lib, 'ndef/dist/index.js'),
-  'nfc': path.resolve(__lib, 'nfc/index.js'),
-  'bus': path.resolve(__lib, 'bus.js'),
-  'schedule': path.resolve(__lib, 'schedule.js'),
-  'series': path.resolve(__helpers, 'series.js'),
-  'callN': path.resolve(__helpers, 'callN.js'),
-  'once': path.resolve(__helpers, 'callOnce.js')
+  'ndef': path.resolve( __lib, 'ndef/dist/index.js' ),
+  'nfc': path.resolve( __lib, 'nfc/index.js' ),
+  'bus': path.resolve( __lib, 'bus.js' ),
+  'schedule': path.resolve( __lib, 'schedule.js' ),
+  'series': path.resolve( __helpers, 'series.js' ),
+  'callN': path.resolve( __helpers, 'callN.js' ),
+  'once': path.resolve( __helpers, 'callOnce.js' )
 }
 
 const aliasedEspModules = {
   // 'event-loop': path.resolve(__globals, 'event-loop.js'),
-  'events': path.resolve(__lib, 'events.js'),
+  'events': path.resolve( __lib, 'events.js' ),
   // 'stream': path.resolve(__lib, 'stream/index.js'),
-  'buffer': path.resolve(__globals, 'buffer/index.js'),
+  'buffer': path.resolve( __globals, 'buffer.js' ),
   // 'blink': path.resolve(__lib, 'blink.js')
 }
 
-Object.assign(aliasedEspModules, aliasedNodeModules)
+Object.assign( aliasedEspModules, aliasedNodeModules )
 
 const ESP32globals = {
   modules: {
@@ -107,13 +108,13 @@ const resolveOptions = {
   preferBuiltins: false,
   customResolveOptions: {
     // order makes sense!
-    moduleDirectory: ['lib', 'helpers', 'node_modules']
+    moduleDirectory: [ 'lib', 'helpers', 'node_modules' ]
   },
-  extensions: ['.js', '.json', '.yaml', '.yml']
+  extensions: [ '.js', '.json', '.yaml', '.yml' ]
 }
 
 const commonjsOptions = {
-  include: /.+/
+  include: '**'
 }
 
 const uglifyOptions = {
@@ -131,24 +132,25 @@ const uglifyOptions = {
   }
 }
 
-export default [
-  {
+export default [ {
     input: 'sandbox/test.node.js',
     output: {
       format: 'cjs',
-      file: path.resolve(__dist, 'test.node.js')
+      file: path.resolve( __dist, 'test.node.js' )
     },
 
     plugins: [
-      resolve(Object.assign({}, resolveOptions, { preferBuiltins: true })),
+      resolve( Object.assign( {}, resolveOptions, {
+        preferBuiltins: true
+      } ) ),
 
-      commonjs(commonjsOptions),
+      commonjs( commonjsOptions ),
 
-      alias(aliasedNodeModules),
+      alias( aliasedNodeModules ),
 
-      inject(injectPolyfillExcludeNM),
+      inject( injectPolyfillExcludeNM ),
 
-      replace(replaceInstanceOf),
+      replace( replaceInstanceOf ),
 
       // typeOf(),
 
@@ -160,31 +162,31 @@ export default [
     input,
     output: {
       format: 'cjs',
-      file: path.resolve(__dist, 'index.pico.js')
+      file: path.resolve( __dist, 'index.pico.js' )
     },
 
     plugins: [
-      resolve(resolveOptions),
+      resolve( resolveOptions ),
 
-      commonjs(commonjsOptions),
+      commonjs( commonjsOptions ),
 
-      alias(aliasedEspModules),
+      alias( aliasedEspModules ),
 
-      inject(injectEventLoopOptions),
+      inject( injectEventLoopOptions ),
 
-      inject(espPolyfills),
+      inject( espPolyfills ),
 
-      inject(injectPolyfillExcludeNM),
+      inject( injectPolyfillExcludeNM ),
 
-      replace(replaceInstanceOf),
+      replace( replaceInstanceOf ),
 
       // typeOf(),
 
       yaml(),
 
-      babel(babelOptions),
+      babel( babelOptions ),
 
-      eslint({}),
+      eslint( {} ),
 
       filesize()
     ]
@@ -195,36 +197,36 @@ export default [
     output: {
       format: 'cjs',
       sourcemap: true,
-      file: path.resolve(__dist, 'index.pico.min.js'),
+      file: path.resolve( __dist, 'index.pico.min.js' ),
     },
 
     plugins: [
-      resolve(resolveOptions),
+      resolve( resolveOptions ),
 
-      commonjs(commonjsOptions),
+      commonjs( commonjsOptions ),
 
-      alias(aliasedEspModules),
+      alias( aliasedEspModules ),
 
-      inject(injectEventLoopOptions),
+      inject( injectEventLoopOptions ),
 
-      inject(espPolyfills),
+      inject( espPolyfills ),
 
-      inject(injectPolyfillExcludeNM),
+      inject( injectPolyfillExcludeNM ),
 
-      replace(replaceInstanceOf),
+      replace( replaceInstanceOf ),
 
       // typeOf(),
 
       yaml(),
 
-      babel(babelOptions),
+      babel( babelOptions ),
 
-      uglify(uglifyOptions),
+      uglify( uglifyOptions ),
 
-      analyze({
+      analyze( {
         limit: 5,
         root: __approot
-      }),
+      } ),
 
 
 
@@ -237,38 +239,38 @@ export default [
     output: {
       format: 'cjs',
       sourcemap: true,
-      file: path.resolve(__dist, 'index.esp32.min.js'),
+      file: path.resolve( __dist, 'index.esp32.min.js' ),
     },
 
     plugins: [
-      resolve(resolveOptions),
+      resolve( resolveOptions ),
 
-      commonjs(commonjsOptions),
+      commonjs( commonjsOptions ),
 
-      alias(aliasedEspModules),
+      alias( aliasedEspModules ),
 
-      inject(injectEventLoopOptions),
+      inject( injectEventLoopOptions ),
 
-      inject(espPolyfills),
+      inject( espPolyfills ),
 
-      inject(injectPolyfillExcludeNM),
+      inject( injectPolyfillExcludeNM ),
 
-      inject(ESP32globals),
+      inject( ESP32globals ),
 
-      replace(replaceInstanceOf),
+      replace( replaceInstanceOf ),
 
       // typeOf(),
 
       yaml(),
 
-      babel(babelOptions),
+      babel( babelOptions ),
 
-      uglify(uglifyOptions),
+      uglify( uglifyOptions ),
 
-      analyze({
+      analyze( {
         limit: 5,
         root: __approot
-      }),
+      } ),
 
 
 

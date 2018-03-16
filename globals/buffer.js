@@ -13,40 +13,38 @@
 //
 // 	return copied
 // }
-//
+
 function Buffer() {
-  throw new Error()
+  throw new Error( 'Buffer constructor is deprecated. Use Buffer.from() instead.' )
 }
 
-//Buffer.from = (iterable, offset, length) => E.toUint8Array(iterable)
-
-Buffer.from = (iterable, offset, length) => {
-  if (typeof iterable == 'string') {
+Buffer.from = ( iterable, offset, length ) => {
+  if ( typeof iterable == 'string' ) {
     const parsed = []
 
-    for (let c in iterable) {
-      parsed[c] = iterable.charCodeAt(c)
+    for ( let c in iterable ) {
+      parsed[ c ] = iterable.charCodeAt( c )
     }
 
-    return new Uint8Array(parsed)
-  } else if (iterable instanceof ArrayBuffer) {
-    return new Uint8Array(iterable.slice(offset !== undefined ? offset : 0, offset + (length !== undefined ? length : iterable.length)))
-  } else if (iterable instanceof Array || iterable instanceof Uint8Array) {
-    return new Uint8Array(iterable)
+    return new Uint8Array( parsed )
+  } else if ( iterable instanceof ArrayBuffer ) {
+    return new Uint8Array( iterable.slice( offset !== undefined ? offset : 0, offset + ( length !== undefined ? length : iterable.length ) ) )
+  } else if ( iterable instanceof Array || iterable instanceof Uint8Array ) {
+    return new Uint8Array( iterable )
   } else {
-    throw new TypeError('Cannot create buffer from', typeof iterable)
+    throw new TypeError( 'Cannot create buffer from', typeof iterable )
   }
 }
 
-Buffer.concat = (_list, _totalLength) => {
+Buffer.concat = ( _list, _totalLength ) => {
   const list = _list || [],
-    totalLength = _totalLength !== undefined ? _totalLength : list.reduce((totalLength, array) => totalLength + array.length, 0),
-    buffer = Buffer.from([], 0, totalLength)
+    totalLength = _totalLength !== undefined ? _totalLength : list.reduce( ( totalLength, array ) => totalLength + array.length, 0 ),
+    buffer = Buffer.from( [], 0, totalLength )
 
-  list.reduce((offset, buf) => {
-    buffer.set(buf, offset)
+  list.reduce( ( offset, buf ) => {
+    buffer.set( buf, offset )
     return offset + buf.length
-  }, 0)
+  }, 0 )
 
   return buffer
 }

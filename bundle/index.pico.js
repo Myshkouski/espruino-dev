@@ -19,182 +19,6 @@ if (typeof console.error !== 'function') {
   console.error = console.log;
 }
 
-var ON = 1;
-var OFF = 0;
-
-if (process.env.CHIP && process.env.CHIP.toUpperCase() == 'ESP32') {
-  ON = 0;
-  OFF = 1;
-} else {
-  
-}
-
-var defaultTimeout = 20;
-
-var once = function once(led, timeout, cb) {
-  // D5.write(0)
-  // console.log('on')
-  led.write(ON);
-  setTimeout(function () {
-    // D5.write(1)
-    // console.log('off')
-    led.write(OFF);
-    cb && cb();
-  }, timeout || defaultTimeout);
-};
-
-Object.assign = function (target) {
-  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-    args[_key - 1] = arguments[_key];
-  }
-
-  for (var i in args) {
-    var obj = args[i];
-    if (obj instanceof Object) {
-      for (var key in obj) {
-        target[key] = obj[key];
-      }
-    }
-  }
-
-  return target;
-};
-
-var _defProp = Object.defineProperty;
-
-Object.defineProperty = function (obj, prop, descriptor) {
-  try {
-    return _defProp(obj, prop, descriptor);
-  } catch (e) {
-    if (desc.get) {
-      obj.value = descriptor.get();
-    } else if (desc.value) {
-      obj[prop] = descriptor.value;
-    }
-
-    return obj;
-  }
-};
-
-Object.defineProperties = function (obj, descriptors) {
-  for (var prop in descriptors) {
-    var descriptor = descriptors[prop];
-    Object.defineProperty(obj, prop, descriptor);
-  }
-  return obj;
-};
-
-var _named = (function (name, f) {
-  return Object.defineProperty(f, 'name', { value: name });
-});
-
-var data = { SUPER_CHAIN_PROTO_PROP: "_super",
-  SUPER_CHAIN_APPLY_PROP: "_apply",
-  PROTOTYPE_IS_EXTENDED_PROP: "_isExtended" };
-
-var SUPER_CHAIN_PROTO_PROP = data.SUPER_CHAIN_PROTO_PROP;
-var SUPER_CHAIN_APPLY_PROP = data.SUPER_CHAIN_APPLY_PROP;
-var PROTOTYPE_IS_EXTENDED_PROP = data.PROTOTYPE_IS_EXTENDED_PROP;
-
-var _copyChain = function _copyChain(Extended, ProtoChain, chainPropName, ignoreExtended) {
-  //if chain on [Extended] has not been created yet
-  if (!Extended.prototype[chainPropName]) {
-    Object.defineProperty(Extended.prototype, chainPropName, { value: [] });
-  }
-
-  ProtoChain.forEach(function (Proto) {
-    //console.log(!!Proto.prototype['__extended__'], Proto)
-    //if [Proto] has been '__extended__' and has same-named proto chain, copy the Proto chain to Extended chain
-    var isExtended = !!Proto.prototype[PROTOTYPE_IS_EXTENDED_PROP],
-        hasSameChain = !!Proto.prototype[chainPropName];
-
-    var alreadyInChain = Extended.prototype[chainPropName].some(function (P) {
-      return P === Proto;
-    }),
-        shouldBePushed = (!isExtended || !ignoreExtended) && !alreadyInChain,
-        shouldCopyChain = isExtended && hasSameChain;
-
-    if (shouldCopyChain) Proto.prototype[chainPropName].forEach(function (Proto) {
-      //avoid pushing twice
-      if (!Extended.prototype[chainPropName].some(function (P) {
-        return P === Proto;
-      })) {
-        //console.log('pushed', Proto)
-        Extended.prototype[chainPropName].push(Proto);
-      }
-    });
-
-    if (shouldBePushed) {
-      Extended.prototype[chainPropName].push(Proto);
-    }
-  });
-
-  //console.log(Extended.prototype[chainPropName])
-};
-
-var _extend = function _extend() {
-  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-  if (!options.apply) options.apply = [];
-  if (!options.super) options.super = [];
-  if (!options.static) options.static = [];
-
-  var Child = options.super[0];
-
-  if (!options.name) options.name = Child.name;
-
-  function Extended() {
-    var _this = this,
-        _arguments = arguments;
-
-    Extended.prototype[SUPER_CHAIN_APPLY_PROP].forEach(function (Super) {
-      if (Super !== Extended) {
-        Super.apply(_this, _arguments);
-      }
-    });
-  }
-
-  _named(options.name, Extended);
-
-  for (var i in options.static) {
-    for (var prop in options.static[i]) {
-      if ('prototype' != prop) {
-        Object.defineProperty(Extended, prop, {
-          value: proto[prop],
-          enumerable: true,
-          writable: true
-        });
-      }
-    }
-  }
-
-  Object.defineProperty(Extended, 'prototype', { value: {} });
-  Object.defineProperty(Extended.prototype, 'constructor', { value: Child });
-  Object.defineProperty(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true });
-
-  for (var _i in options.super) {
-    var Proto = function Proto() {};
-
-    Proto.prototype = options.super[_i].prototype;
-    var _proto = new Proto();
-
-    for (var _prop in _proto) {
-      if (['constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP].indexOf(_prop) < 0) {
-        Object.defineProperty(Extended.prototype, _prop, {
-          value: _proto[_prop],
-          enumerable: true,
-          writable: true
-        });
-      }
-    }
-  }
-
-  _copyChain(Extended, options.super, SUPER_CHAIN_PROTO_PROP, false);
-  _copyChain(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
-
-  return Extended;
-};
-
 Array.prototype.concat = function () {
   var concatenated = [];
 
@@ -245,13 +69,17 @@ Promise.race = function (promises) {
 // }
 //
 
+var _typeof$1 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+ArrayBuffer.isView = function (value) {
+  return (typeof value === 'undefined' ? 'undefined' : _typeof$1(value)) == 'object' && value.buffer instanceof ArrayBuffer;
+}; // arrayBufferViewInstances.some( ArrayBufferView => value instanceof ArrayBufferView )
+
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function Buffer() {
-  throw new Error();
+  throw new Error('Buffer constructor is deprecated. Use Buffer.from() instead.');
 }
-
-//Buffer.from = (iterable, offset, length) => E.toUint8Array(iterable)
 
 Buffer.from = function (iterable, offset, length) {
   if (typeof iterable == 'string') {
@@ -284,6 +112,191 @@ Buffer.concat = function (_list, _totalLength) {
   }, 0);
 
   return buffer;
+};
+
+Object.assign = function (target) {
+  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    args[_key - 1] = arguments[_key];
+  }
+
+  for (var i in args) {
+    var obj = args[i];
+    if (obj instanceof Object) {
+      for (var key in obj) {
+        target[key] = obj[key];
+      }
+    }
+  }
+
+  return target;
+};
+
+var _defProp = Object.defineProperty;
+
+Object.defineProperty = function (obj, prop, descriptor) {
+  try {
+    return _defProp(obj, prop, descriptor);
+  } catch (e) {
+    if (descriptor.get) {
+      obj.value = descriptor.get();
+    } else if (descriptor.value) {
+      obj[prop] = descriptor.value;
+    }
+
+    return obj;
+  }
+};
+
+Object.defineProperties = function (obj, descriptors) {
+  for (var prop in descriptors) {
+    var descriptor = descriptors[prop];
+    Object.defineProperty(obj, prop, descriptor);
+  }
+  return obj;
+};
+
+var ON = 1;
+var OFF = 0;
+
+if (process.env.CHIP && process.env.CHIP.toUpperCase() == 'ESP32') {
+  ON = 0;
+  OFF = 1;
+} else {
+  
+}
+
+var defaultTimeout = 20;
+
+var once = function once(led, timeout, cb) {
+  // D5.write(0)
+  // console.log('on')
+  led.write(ON);
+  setTimeout(function () {
+    // D5.write(1)
+    // console.log('off')
+    led.write(OFF);
+    cb && cb();
+  }, timeout || defaultTimeout);
+};
+
+var _named = (function (name, f) {
+  return Object.defineProperty(f, 'name', { value: name });
+});
+
+var data = { SUPER_CHAIN_PROTO_PROP: "_super",
+  SUPER_CHAIN_APPLY_PROP: "_apply",
+  PROTOTYPE_IS_EXTENDED_PROP: "_isExtended" };
+
+var SUPER_CHAIN_PROTO_PROP = data.SUPER_CHAIN_PROTO_PROP;
+var SUPER_CHAIN_APPLY_PROP = data.SUPER_CHAIN_APPLY_PROP;
+var PROTOTYPE_IS_EXTENDED_PROP = data.PROTOTYPE_IS_EXTENDED_PROP;
+
+var _copyChain = function _copyChain(Extended, ProtoChain, chainPropName, ignoreExtended) {
+  //if chain on [Extended] has not been created yet
+  if (!Extended.prototype[chainPropName]) {
+    Object.defineProperty(Extended.prototype, chainPropName, {
+      value: []
+    });
+  }
+
+  ProtoChain.forEach(function (Proto) {
+    //console.log(!!Proto.prototype['__extended__'], Proto)
+    //if [Proto] has been '__extended__' and has same-named proto chain, copy the Proto chain to Extended chain
+    var isExtended = !!Proto.prototype[PROTOTYPE_IS_EXTENDED_PROP],
+        hasSameChain = !!Proto.prototype[chainPropName];
+
+    var alreadyInChain = Extended.prototype[chainPropName].some(function (P) {
+      return P === Proto;
+    }),
+        shouldBePushed = (!isExtended || !ignoreExtended) && !alreadyInChain,
+        shouldCopyChain = isExtended && hasSameChain;
+
+    if (shouldCopyChain) Proto.prototype[chainPropName].forEach(function (Proto) {
+      //avoid pushing twice
+      if (!Extended.prototype[chainPropName].some(function (P) {
+        return P === Proto;
+      })) {
+        //console.log('pushed', Proto)
+        Extended.prototype[chainPropName].push(Proto);
+      }
+    });
+
+    if (shouldBePushed) {
+      Extended.prototype[chainPropName].push(Proto);
+    }
+  });
+
+  //console.log(Extended.prototype[chainPropName])
+};
+
+var _extend = function _extend() {
+  var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+  if (!options.apply) options.apply = [];
+  if (!options.proto) options.proto = [];
+  // if ( !options.static )
+  //   options.static = []
+
+  var Child = options.proto[0];
+
+  if (!options.name) options.name = Child.name;
+
+  function Extended() {
+    var _this = this,
+        _arguments = arguments;
+
+    Extended.prototype[SUPER_CHAIN_APPLY_PROP].forEach(function (Super) {
+      if (Super !== Extended) {
+        Super.apply(_this, _arguments);
+      }
+    });
+  }
+
+  _named(options.name, Extended);
+
+  // for ( let i in options.static ) {
+  //   for ( let prop in options.static[ i ] ) {
+  //     if ( 'prototype' != prop ) {
+  //       Object.defineProperty( Extended, prop, {
+  //         value: proto[ prop ],
+  //         enumerable: true,
+  //         writable: true
+  //       } )
+  //     }
+  //   }
+  // }
+
+  Object.defineProperty(Extended, 'prototype', {
+    value: {}
+  });
+  Object.defineProperty(Extended.prototype, 'constructor', {
+    value: Child
+  });
+  Object.defineProperty(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, {
+    value: true
+  });
+
+  for (var i in options.proto) {
+    var Proto = function Proto() {};
+
+    Proto.prototype = options.proto[i].prototype;
+    var proto = new Proto();
+
+    for (var prop in proto) {
+      if (['constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP].indexOf(prop) < 0) {
+        Object.defineProperty(Extended.prototype, prop, {
+          value: proto[prop],
+          enumerable: true,
+          writable: true
+        });
+      }
+    }
+  }
+
+  _copyChain(Extended, options.proto, SUPER_CHAIN_PROTO_PROP, false);
+  _copyChain(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
+
+  return Extended;
 };
 
 var loop = [
@@ -507,7 +520,7 @@ BufferState.prototype = {
 
     var buffer = Buffer.from(Array(length));
 
-    var offset = this._buffer.slice(0, to.nodeIndex - 1).reduce(function (offset, node) {
+    var offset = this._buffer.slice(to.nodeIndex - 1).reduce(function (offset, node) {
       buffer.set(node.chunk, offset);
       return offset + node.chunk.length;
     }, 0);
@@ -596,7 +609,8 @@ function series(arr, cb, done) {
   })();
 }
 
-//import Schedule from 'schedule'
+var _typeof$2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var DEFAULT_HIGHWATERMARK = 64;
 
 function _resetWatcher(watcher) {
@@ -621,6 +635,28 @@ function _decrementActive() {
   }
 }
 
+function _found(watcher) {
+  var _busState = this._busState;
+  var watching = _busState.watching;
+
+  var chunk = _busState.buffer(watcher.length);
+  _busState.nodeIndex = -1;
+  try {
+    // console.time( 'cb' )
+    watcher.callback(chunk,
+    // frame.splice(-watcher.length),
+    watcher);
+    // console.timeEnd( 'cb' )
+  } catch (err) {
+    this.emit('error', err);
+  }
+  // _busState.watching = []
+  // console.time( 'reset' )
+  watching.forEach(_resetWatcher);
+  _resetActive.call(this);
+  // console.timeEnd( 'reset' )
+}
+
 function _nextPattern(watcher) {
   if (1 + watcher.patternIndex < watcher.list.length) {
     // console.time('next pattern')
@@ -629,7 +665,7 @@ function _nextPattern(watcher) {
 
     if (typeof nextPattern == 'function') {
       try {
-        watcher.currentPattern = nextPattern.call(this, this._busState.slice(watcher.length));
+        watcher.currentPattern = nextPattern.call(this, this._busState.slice(1 + watcher.length));
       } catch (err) {
         _resetWatcher(watcher);
         _decrementActive.call(this);
@@ -644,31 +680,10 @@ function _nextPattern(watcher) {
   }
 }
 
-function _found(watcher) {
-  var _busState = this._busState;
-  var watching = _busState.watching;
-
-  var chunk = _busState.buffer(watcher.length);
-  _busState.nodeIndex = -1;
-  try {
-    // console.time( 'cb' )
-    watcher.callback(chunk,
-    // frame.splice(-watcher.length),
-    watcher.pattern);
-    // console.timeEnd( 'cb' )
-  } catch (err) {
-    this.emit('error', err);
-  }
-  // _busState.watching = []
-  // console.time( 'reset' )
-  watching.forEach(_resetWatcher);
-  _resetActive.call(this);
-  // console.timeEnd( 'reset' )
-}
-
 function _push() {
   var _this = this;
 
+  // console.log( '_push()' )
   var _busState = this._busState;
   var watching = _busState.watching,
       _buffer = _busState._buffer;
@@ -692,22 +707,22 @@ function _push() {
     var currentChunkIndex = 0;
     var watcherIndex = 0;
     var isEqual = false;
+    if (!_busState.active) {
+      _busState.active = _busState.watching.reduce(function (active, watcher) {
+        var list = watcher.list;
+
+        try {
+          watcher.currentPattern = typeof list[0] == 'function' ? list[0].call(_this, _busState.slice(watcher.length)) : list[0];
+          watcher.active = true;
+          return 1 + active;
+        } catch (err) {
+          _this.emit('error', err);
+          return active;
+        }
+      }, 0);
+    }
+
     for (; currentChunkIndex < chunk.length; currentChunkIndex++) {
-      if (!_busState.active) {
-        _busState.active = _busState.watching.reduce(function (active, watcher) {
-          var list = watcher.list;
-
-          try {
-            watcher.currentPattern = typeof list[0] == 'function' ? list[0](_busState.slice(watcher.length)) : list[0];
-            watcher.active = true;
-            return 1 + active;
-          } catch (err) {
-            _this.emit('error', err);
-            return active;
-          }
-        }, 0);
-      }
-
       var byte = chunk[currentChunkIndex];
 
       for (watcherIndex = 0; watcherIndex < watching.length; watcherIndex++, isEqual = false) {
@@ -717,25 +732,27 @@ function _push() {
         }
 
         var currentPattern = watcher.currentPattern;
-        // let isEqual = false
 
-        if (Array.isArray(currentPattern)) {
+
+        if (Array.isArray(currentPattern) || ArrayBuffer.isView(currentPattern)) {
           var expected = currentPattern[watcher.byteIndex];
-
-          // console.log('current watching:', watcher.currentPattern)
-          // console.log('current chunk:', chunk)
-          // console.log('byte:', byte)
-          // console.log('expected:', expected)
 
           if (expected === undefined || typeof expected == 'number' && expected === byte) {
             isEqual = true;
           } else if (typeof expected == 'function') {
             try {
-              isEqual = !!expected.call(this, byte, watcher.length /*i.e. index*/, _busState.slice(watcher.length /*i.e. actual length*/));
+              isEqual = !!expected.call(this, byte, watcher.length - 1 /*i.e. index*/, _busState.slice(1 + watcher.length /*i.e. actual length*/));
             } catch (err) {
               this.emit('error', err);
             }
           }
+
+          // if ( !isEqual ) {
+          //   console.log( 'current watching:', watcher.currentPattern )
+          //   console.log( 'current chunk:', chunk )
+          //   console.log( 'byte:', byte )
+          //   console.log( 'expected:', expected )
+          // }
 
           if (isEqual) {
             ++watcher.length;
@@ -749,16 +766,27 @@ function _push() {
             _resetWatcher(watcher);
             _decrementActive.call(this);
 
+            // console.log( 'active', _busState.active )
+
             if (!_busState.active) {
               this.emit('error', {
-                msg: 'Unparsed chunk',
-                data: _busState.buffer()
+                message: 'Unparsed chunk',
+                expected: expected,
+                actual: byte,
+                pattern: currentPattern,
+                chunk: _busState.buffer(),
+                index: currentChunkIndex,
+                value: byte
               });
             }
+
+            // break
           }
         } else if (typeof currentPattern == 'number') {
           if (currentPattern <= 0) {
-            throw new RangeError('Pattern length should be a positive integer, but set to', currentPattern);
+            throw Object.assign(new ReferenceError('Pattern length should be a positive integer'), {
+              pattern: currentPattern
+            });
           }
 
           if (watcher.offset <= 0) {
@@ -770,6 +798,8 @@ function _push() {
           if (--watcher.offset < 1) {
             _nextPattern.call(this, watcher);
           }
+        } else {
+          throw new TypeError('Cannot parse pattern of ' + (typeof currentPattern === 'undefined' ? 'undefined' : _typeof$2(currentPattern)) + ' type');
         }
       }
     }
@@ -818,6 +848,8 @@ _Bus$1.prototype = {
   push: function push(chunk) {
     var _this3 = this;
 
+    // console.log( 'push()' )
+    // console.log( chunk )
     if (chunk.length) {
       this._busState.push(chunk);
 
@@ -949,7 +981,7 @@ _Bus$1.prototype = {
 };
 
 var Bus$1 = _extend({
-  super: [EventEmitter, _Bus$1],
+  proto: [EventEmitter, _Bus$1],
   apply: [EventEmitter, _Bus$1]
 });
 
@@ -1166,7 +1198,7 @@ var MIFARE_COMMAND_WRITE_16 = data$2.MIFARE_COMMAND_WRITE_16;
 
 
 
-var PN532_SAM_NORMAL_MODE = data$2.PN532_SAM_NORMAL_MODE;
+
 
 
 
@@ -1213,7 +1245,7 @@ var parseInfo = function parseInfo(chunk) {
   return {
     raw: chunk,
     code: chunk[6],
-    body: Buffer.from(chunk.slice(7, 5 + chunk[3]))
+    body: chunk.slice(7, 5 + chunk[3])
   };
 };
 
@@ -1221,7 +1253,7 @@ var parseBlockData = function parseBlockData(data) {
   if (data.body.length == 1) {
     throw {
       cmd: data.code,
-      errCode: data.body[0]
+      code: data.body[0]
     };
   } else {
     return {
@@ -1241,7 +1273,8 @@ _Bus.prototype = {
       // this.expect([...ACK, ...info], chunk => done((parsers || [sliceAck, parseInfo]).reduce((data, parse) => parse(data), chunk)))
       _this.expect(ACK, function () {
         _this.expect(info, function (chunk) {
-          return done((parsers || [parseInfo]).reduce(function (data, parse) {
+          var _parsers = parsers || [parseInfo];
+          done(_parsers.reduce(function (data, parse) {
             return parse(data);
           }, chunk));
         });
@@ -1315,18 +1348,10 @@ _Bus.prototype = {
   writeSector: function writeSector(start, chunk) {}
 };
 
-var Bus = _extend({ super: [Bus$1, _Bus], apply: [Bus$1, _Bus] });
-
-var wakeup = command([PN532_COMMAND_WAKEUP]);
-var sam = command([PN532_COMMAND_SAMCONFIGURATION, PN532_SAM_NORMAL_MODE, 20, 0]);
-
-// [0, 0, 255, 0, 255, 0]
-// [0, 0, 255, 6, 250, 213, 3, 50, 1, 6, 7, 232, 0]
-
-// [0, 0, 255, 0, 255, 0, 2, 42, 1, 6, 7, 232, 0, 0, 0, ]
-
-// [1, 0, 0, 255, 0, 255, 0, 2, 42, 0, 0, 0, 0, 0, 0, 0]
-// [1, 0, 0, 255, 6, 250, 213, 3, 50, 1, 6, 7, 232, 0, 0, 0]
+var Bus = _extend({
+  proto: [Bus$1, _Bus],
+  apply: [Bus$1, _Bus]
+});
 
 function setup() {
   var _this = this;
@@ -1334,28 +1359,27 @@ function setup() {
   if (this.type == 'serial') {
     this.transport.setup(115200);
 
-    this.transport.write(wakeup);
-    this.transport.write(sam);
+    this.transport.on('data', function (data) {
+      console.log(Buffer.from(data));
+      _this.push(data);
+    });
 
-    setTimeout(function () {
-      _this.transport.read();
-      _this.transport.on('data', function (data) {
-        return _this.push(data);
-      });
-      console.log('Bus has been set up');
+    this.transport.write(PN532_COMMAND_WAKEUP);
+
+    console.log('configuring sam');
+    this.send(command([PN532_COMMAND_SAMCONFIGURATION, 0x01, 20, 0]));
+    this.expect(ACK, function () {
+      console.log('sam ACK');
+    });
+    this.expect(INFO, function () {
+      console.log('sam configured');
+
       once(LED1, 20, function () {
         setTimeout(function () {
           return once(LED1, 20);
         }, 200);
       });
-
-      _this.rx([].concat(ACK, INFO), function (frame) {
-        console.log('frame');
-        console.log(frame);
-      });
-
-      _this.tx(command([PN532_COMMAND_GETFIRMWAREVERSION]));
-    }, 500);
+    });
   } else if (this.type == 'i2c') {
     this.transport.setup({
       bitrate: 400 * 1000
@@ -1366,15 +1390,15 @@ function setup() {
     });
 
     try {
-      this.tx(1);
+      this.send(1);
     } catch (err) {
       console.log('Handled', err.msg);
       console.log('Continue...');
     }
 
-    this.tx(command([PN532_COMMAND_GETFIRMWAREVERSION]));
+    this.send(command([PN532_COMMAND_GETFIRMWAREVERSION]));
 
-    this.rx([].concat(ACK, INFO), {
+    this.expect([].concat(ACK, INFO), {
       timeout: 10
     }, function (frame) {
       console.log('frame');
@@ -1419,45 +1443,494 @@ bus.on('error', function (err) {
 
 bus.setup();
 
-// const key = new Uint8  Array(Array(6).fill(0xff))
+var key = new Uint8Array(Array(6).fill(0xff));
 
-// console.log(key)
+setTimeout(function () {
+  Promise.resolve().then(function () {
+    (function poll() {
+      var sector = 1;
+      console.log(process.memory().free);
+      console.log(bus._busState.watching.length);
+      Promise.resolve().then(function () {
+        return bus.findTargets(2, 'A');
+      }).then(function (data) {
+        console.log('found target', data);
+        LED1.write(1);
+        return data;
+      }).then(function (data) {
+        return bus.authenticate(sector * 4, data.uid, key);
+      }).then(function (data) {
+        console.log('auth', data);
+      })
+      // .then( data => bus.writeBlock( 4, [ 1, 3, 6, 4 ] ) )
+      // .then( data => {
+      //   console.log( 'write op:', data )
+      // } )
+      .then(function (data) {
+        console.log('reading', sector, 'sector');
+        return data;
+      }).then(function (data) {
+        return bus.readSector(sector);
+      }).then(function (data) {
+        console.log('after init', data);
+        return data;
+      })
+      // .then( () => new Promise( ( done, fail ) => {
+      //   console.log( 'COMMAND InAutoPoll' )
+      //   bus.expect( ACK, () => {
+      //     console.log( 'ACK InAutoPoll' )
+      //     bus.expect( INFO, frame => {
+      //       let index = 7
+      //       // console.log( 'RESPONSE ( raw ) InAutoPoll', frame )
+      //       const data = {
+      //         count: frame[ index ],
+      //         targets: []
+      //       }
+      //       for ( let i = 0; i < data.count; i++ ) {
+      //         const type = frame[ ++index ]
+      //         const length = frame[ ++index ]
+      //
+      //         const targetRaw = frame.slice( ++index, index += length )
+      //
+      //         // console.log( 'targetRaw', targetRaw )
+      //
+      //         const targetData = {
+      //           type: type & 7,
+      //           br106A: ( type & 7 ) == 0,
+      //           br106B: ( type & 7 ) == 3,
+      //           br212: ( type & 7 ) == 1,
+      //           br424: ( type & 7 ) == 2,
+      //
+      //           mifareOrFelica: !!( type & 16 ),
+      //           isoCompilant: !!( type & 32 ),
+      //           dep: !!( type & 64 ),
+      //           active: !!( type & 128 )
+      //         }
+      //
+      //         if ( targetData.dep ) {
+      //           let offset = 0
+      //
+      //           if ( !targetData.active ) {
+      //             offset = parseDEP( targetRaw, targetData )
+      //           }
+      //
+      //           Object.assign( targetData, {
+      //             NFCID3t: targetRaw.slice( offset, offset + 10 ),
+      //             DIDt: frame[ offset + 10 ],
+      //             BSt: frame[ offset + 11 ],
+      //             BRt: frame[ offset + 12 ],
+      //             TO: frame[ offset + 13 ],
+      //             PPt: frame[ offset + 14 ],
+      //             Gt: targetRaw.slice( offset + 15, targetRaw.length )
+      //           } )
+      //         } else {
+      //           parseDEP( targetRaw, targetData )
+      //         }
+      //
+      //         data.targets.push( targetData )
+      //       }
+      //
+      //       console.log( 'RESPONSE InAutoPoll', data )
+      //
+      //       done( data )
+      //     } )
+      //   } )
+      //
+      //   bus.send( command( [
+      //     0x60,
+      //     0xff, // poll n
+      //     0x01, // period = n * 150 ms
+      //     0x42, 0x82
+      //   ] ) )
+      // } ) )
+      // .then( found => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'initAsTarget ACK' )
+      //     bus.expect( INFO, frame => {
+      //       bus.send( ...ACK )
+      //       bus.unwatch()
+      //
+      //       const data = {
+      //         mode: {
+      //           baudrate: ( frame[ 8 ] & 112 ) >> 4,
+      //           picc: !!( frame[ 8 ] & 15 ),
+      //           dep: !!( frame[ 8 ] & 4 ),
+      //           framingType: frame[ 8 ] & 3
+      //         },
+      //         initiatorCommand: frame.slice( 9, -2 )
+      //       }
+      //
+      //       console.log( 'initAsTarget RESPONSE', data )
+      //       console.log( 'initAsTarget COMMAND', toHexString( data.initiatorCommand ) )
+      //
+      //       done( data )
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   const c = command( [
+      //     0x8c,
+      //     1,
+      //
+      //     0x00, 0x00, //SENS_RES
+      //     ...NFCID3.slice( 0, 3 ), //NFCID1
+      //     0x40, //SEL_RES
+      //
+      //     0x01, 0xFE, 0x0F, 0xBB, 0xBA, 0xA6, 0xC9, 0x89, // POL_RES
+      //     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      //     0xFF, 0xFF,
+      //
+      //     ...NFCID3,
+      //
+      //     13, // length gt
+      //
+      //     0x46, 0x66, 0x6d,
+      //     0x01, 0x01, 0x11,
+      //     0x03, 0x02, 0x00, 0x13,
+      //     0x04, 0x01, 0x96,
+      //
+      //     0 // Tk length
+      //   ] )
+      //
+      //   // console.log( c )
+      //
+      //   bus.send( c )
+      // } ) )
+      // .then( data => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'TgResponseToInitiator ACK' )
+      //     bus.expect( INFO, frame => {
+      //
+      //       console.log( 'TgResponseToInitiator RESPONSE', frame )
+      //
+      //       bus.send( ...ACK )
+      //       bus.unwatch()
+      //
+      //       done()
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x90,
+      //     0x1f,
+      //     0xd5, 0x01,
+      //     ...NFCID3,
+      //     0,
+      //     0,
+      //     0,
+      //     0x0e,
+      //     0x32,
+      //
+      //     0x46, 0x66, 0x6D,
+      //     0x01, 0x01, 0x12,
+      //     0x03, 0x02, 0x00, 0x13,
+      //     0x04, 0x01, 0x64
+      //   ] ) )
+      // } ) )
+      // .then( data => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'TgGetInitiatorCommand ACK' )
+      //     bus.expect( INFO, frame => {
+      //
+      //       console.log( 'TgGetInitiatorCommand RESPONSE', toHexString( frame ) )
+      //
+      //       bus.send( ...ACK )
+      //       bus.unwatch()
+      //
+      //       done()
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x88
+      //   ] ) )
+      // } ) )
+      // .then( data => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'TgResponseToInitiator ACK' )
+      //     bus.expect( INFO, frame => {
+      //
+      //       console.log( 'TgResponseToInitiator RESPONSE', toHexString( frame ) )
+      //
+      //       bus.send( ...ACK )
+      //       bus.unwatch()
+      //
+      //       done()
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x90,
+      //     0x06,
+      //     0xd4, 0x06,
+      //     0x00,
+      //     0x00, 0x00
+      //   ] ) )
+      // } ) )
+      // .then( () => new Promise( ( done, fail ) => {
+      //   const nack = setTimeout( () => {
+      //     bus.send( ...ACK )
+      //     bus.unwatch()
+      //
+      //     fail( 'no answer for tgGetTargetStatus!' )
+      //   }, 1000 )
+      //
+      //   bus.expect( ACK, () => {
+      //     console.log( 'tgGetTargetStatus ACK' )
+      //     bus.expect( INFO, frame => {
+      //       clearTimeout( nack )
+      //       bus.unwatch()
+      //       console.log( 'tgGetTargetStatus RESPONSE:' )
+      //       console.log( toHexString( frame ) )
+      //       done()
+      //     } )
+      //   } )
+      //
+      //   bus.send( command( [ 0x8a ] ) )
+      // } ) )
+      // .then( found => {
+      //   return found.targets[ 0 ]
+      // } )
+      // .then( target => new Promise( ( done, fail ) => {
+      //   console.log( 'requesting DEP exchange...' )
+      //   bus.expect( ACK, () => {
+      //     console.log( 'injumpfordep ACK' )
+      //     bus.expect( INFO, frame => {
+      //       const data = {
+      //         code: frame[ 6 ],
+      //         status: frame[ 7 ],
+      //         targetNumber: frame[ 8 ],
+      //         NFCID3t: frame.slice( 9, 19 ),
+      //         DIDt: frame[ 19 ],
+      //         BSt: frame[ 20 ],
+      //         BRt: frame[ 21 ],
+      //         TO: frame[ 22 ],
+      //         PPt: frame[ 23 ],
+      //         Gt: frame.slice( 24, -2 )
+      //       }
+      //
+      //       console.log( 'injumpfordep RESPONSE', data )
+      //       console.log( 'general bytes:', toHexString( data.Gt ) )
+      //
+      //       bus.send( ...ACK )
+      //       bus.unwatch()
+      //
+      //       done( data )
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   let payload = [
+      //     0x56,
+      //     target.active ? 0x00 : 0x01, // active
+      //     target.baudrate
+      //   ]
+      //
+      //   if ( !target.active ) {
+      //     payload = [
+      //       ...payload,
+      //       6,
+      //
+      //       ...NFCID3,
+      //
+      //       // 0x25, // len,
+      //       // 0xd4, 0x00, // atr req
+      //       // 0x00,
+      //       // 0x00,
+      //       // 0x00,
+      //       // 0x32,
+      //
+      //       0x46, 0x66, 0x6D,
+      //       0x01, 0x01, 0x12,
+      //       0x02, 0x02, 0x07, 0x80, // TLV: MIUX = 128 + MIU 1920
+      //       0x03, 0x02, 0x00, 0x03, // TLV: Services
+      //       0x04, 0x01, 0x64,
+      //       0x07, 0x01, 0x03
+      //     ]
+      //   } else {
+      //     payload = [
+      //       ...payload,
+      //       1,
+      //
+      //       0x01, 0x02, 0x03, 0x04, 0x05
+      //     ]
+      //   }
+      //
+      //   console.log( payload )
+      //
+      //   bus.send( command( payload ) )
+      // } ) )
+      // .then( target => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'indataexchange ACK' )
+      //     bus.expect( INFO, frame => {
+      //
+      //       console.log( 'indataexchange RESPONSE', frame )
+      //
+      //       bus.send( ...ACK )
+      //       bus.unwatch()
+      //
+      //       done( target )
+      //
+      //       // if ( frame[ 7 ] == frame[ 8 ] == frame[ 9 ] == 0x00 ) {
+      //       //   console.log( 'SYMM received' )
+      //       //   done( target )
+      //       // } else {
+      //       //   console.log( 'SYMM does not received' )
+      //       //   fail()
+      //       // }
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x40,
+      //     // target.targetNumber,
+      //     0x06, // len
+      //     0xd4, 0x06, // dep_req
+      //     0x00, // PFB
+      //     0x00, 0x00 // SYMM PDU
+      //   ] ) )
+      // } ) )
+      // .then( target => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'indataexchange ACK' )
+      //     bus.expect( INFO, frame => {
+      //
+      //       console.log( 'indataexchange RESPONSE', frame )
+      //
+      //       bus.send( ...ACK )
+      //
+      //       if ( frame[ 7 ] == frame[ 8 ] == frame[ 9 ] == 0x00 ) {
+      //         console.log( 'SYMM_RES received' )
+      //         done( target )
+      //       } else {
+      //         console.log( 'SYMM_RES does not received' )
+      //         fail()
+      //       }
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x40,
+      //     target.targetNumber,
+      //     0x06, // len
+      //     0xd4, 0x06, // dep_req
+      //     0x01, // PFB
+      //     0x00, 0x00 // SYMM PDU
+      //   ] ) )
+      // } ) )
+      // .then( target => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'indataexchange ACK' )
+      //     bus.expect( INFO, frame => {
+      //
+      //       console.log( 'indataexchange RESPONSE', frame )
+      //       console.log( 'CONNECT PDU' )
+      //
+      //       bus.send( ...ACK )
+      //
+      //       done( target )
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x40,
+      //     target.targetNumber,
+      //     0x1e, // len
+      //     0x04, 0x06, // DEP_RES
+      //     0x01, // info_pdu, pni 0
+      //     0x05, 0x20, // CONNECT PDU
+      //     0x06, // service name
+      //     0x0f, // len
+      //     ...[].slice.call( Buffer.from( 'urn:nfc:sn:snep' ) ),
+      //     0x02, 0x02, 0x07, 0x80, // TLV MIUX
+      //     0x05, 0x01, 0x04 // TLV RWS
+      //   ] ) )
+      // } ) )
+      // // .then( found => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'tgGetData ack' )
+      //     bus.expect( INFO, frame => {
+      //
+      //       console.log( 'tgGetData response', frame )
+      //
+      //       bus.send( ...ACK )
+      //
+      //       done()
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x86
+      //   ] ) )
+      // } ) )
+      // .then( data => bus.authenticate( 4, data.uid, key ) )
+      // .then( data => {
+      //   console.log( 'auth', data )
+      // } )
+      // .then( found => new Promise( ( done, fail ) => {
+      //   bus.expect( ACK, () => {
+      //     console.log( 'indataexchange ack' )
+      //     bus.expect( INFO, frame => {
+      //       console.log( 'indataexchange response', frame )
+      //       done()
+      //     } )
+      //   } )
+      //
+      //   bus.expect( ERR, fail )
+      //   bus.expect( NACK, fail )
+      //
+      //   bus.send( command( [
+      //     0x40,
+      //     1
+      //   ] ) )
+      // } ) )
+      // .then(data => { console.log('sector 2:', data); return data })
+      // .then( data => data.reduce( ( buffer, data ) => [ ...buffer, ...[].slice.call( data.chunk, 0 ) ], [] ) )
+      // .then( console.log )
+      // .then(data => { console.timeEnd('reading 2 sector'); return data })
+      // .then(data => bus.readBlock(4)).then(data => { console.log('block 4:', data) })
+      // .then(data => bus.readBlock(5)).then(data => { console.log('block 5:', data) })
+      // .then(data => bus.readBlock(6)).then(data => { console.log('block 6:', data) })
+      // .then(data => bus.readBlock(7)).then(data => { console.log('block 7:', data) })
+      .catch(function (err) {
+        console.error('Error:', err);
+      }).then(function () {
+        LED1.write(0);
+        LED2.write(0);
 
+        bus.send.apply(bus, ACK);
+        bus.unwatch();
 
-// setTimeout(() => {
-//   (function poll() {
-//     // console.log(process.memory().free)
-//     // console.log(bus._busState.watching.length)
-//     Promise.resolve()
-//       .then(() => bus.findTargets(1, 'A')) // .then(data => { console.log('found card', data.uid); return data })
-//       .then(data => {
-//         LED1.write(0)
-//         return data
-//       })
-//       // .then(data => bus.authenticate(4, data.uid, key).then(data => { console.log('auth op 4:', data) }).then(() => bus.authenticate(3, data.uid, key).then(data => { console.log('auth op:', data) })))
-//       .then(data => bus.authenticate(1 * 4, data.uid, key)) // .then(data => { console.log('auth', data) })
-//       // .then(data => bus.writeBlock(4, [1, 3, 6, 4])).then(data => { console.log('write op:', data) })
-//       // .then(data => { console.time('reading 2 sector'); return data })
-//       .then(data => bus.readSector(1))
-//       .then(data => {
-//         LED1.write(1)
-//         return data
-//       }) // .then(data => { console.log('sector 2:', data); return data })
-//       .then(data => data.reduce((buffer, data) => [...buffer, ...[].slice.call(data.chunk, 0)], []))
-//       .then(console.log)
-//       // .then(data => { console.timeEnd('reading 2 sector'); return data })
-//       // .then(data => bus.readBlock(4)).then(data => { console.log('block 4:', data) })
-//       // .then(data => bus.readBlock(5)).then(data => { console.log('block 5:', data) })
-//       // .then(data => bus.readBlock(6)).then(data => { console.log('block 6:', data) })
-//       // .then(data => bus.readBlock(7)).then(data => { console.log('block 7:', data) })
-//       .catch(err => {
-//         LED1.write(1)
-//         console.error('Error:', err)
-//       })
-//       .then(() => {
-//         setTimeout(() => {
-//           poll()
-//         }, 500)
-//       })
-//   })()
-// }, 1000)
+        setTimeout(function () {
+          poll();
+        }, 500);
+      });
+    })();
+  }).catch(console.error);
+}, 1000);

@@ -1,9 +1,9 @@
-Object.assign = (target, ...args) => {
-  for(let i in args) {
-    const obj = args[i]
-    if(obj instanceof Object) {
-      for(let key in obj) {
-        target[key] = obj[key]
+Object.assign = ( target, ...args ) => {
+  for ( let i in args ) {
+    const obj = args[ i ]
+    if ( obj instanceof Object ) {
+      for ( let key in obj ) {
+        target[ key ] = obj[ key ]
       }
     }
   }
@@ -13,25 +13,24 @@ Object.assign = (target, ...args) => {
 
 const _defProp = Object.defineProperty
 
-Object.defineProperty = (obj, prop, descriptor) => {
+Object.defineProperty = ( obj, prop, descriptor ) => {
   try {
-    return _defProp(obj, prop, descriptor)
-  } catch(e) {
-    if(desc.get) {
+    return _defProp( obj, prop, descriptor )
+  } catch ( e ) {
+    if ( descriptor.get ) {
       obj.value = descriptor.get()
-    }
-    else if(desc.value) {
-      obj[prop] = descriptor.value
+    } else if ( descriptor.value ) {
+      obj[ prop ] = descriptor.value
     }
 
     return obj
   }
 }
 
-Object.defineProperties = (obj, descriptors) => {
-  for(let prop in descriptors) {
-    const descriptor = descriptors[prop]
-    Object.defineProperty(obj, prop, descriptor)
+Object.defineProperties = ( obj, descriptors ) => {
+  for ( let prop in descriptors ) {
+    const descriptor = descriptors[ prop ]
+    Object.defineProperty( obj, prop, descriptor )
   }
   return obj
 }

@@ -14,163 +14,171 @@ var SUPER_CHAIN_PROTO_PROP = data.SUPER_CHAIN_PROTO_PROP;
 var SUPER_CHAIN_APPLY_PROP = data.SUPER_CHAIN_APPLY_PROP;
 var PROTOTYPE_IS_EXTENDED_PROP = data.PROTOTYPE_IS_EXTENDED_PROP;
 
-const _copyChain = (Extended, ProtoChain, chainPropName, ignoreExtended) => {
+const _copyChain = ( Extended, ProtoChain, chainPropName, ignoreExtended ) => {
   //if chain on [Extended] has not been created yet
-  if(!Extended.prototype[chainPropName]) {
-    Object.defineProperty(Extended.prototype, chainPropName, { value: [] });
+  if ( !Extended.prototype[ chainPropName ] ) {
+    Object.defineProperty( Extended.prototype, chainPropName, {
+      value: []
+    } );
   }
 
-  ProtoChain.forEach(Proto => {
+  ProtoChain.forEach( Proto => {
     //console.log(!!Proto.prototype['__extended__'], Proto)
     //if [Proto] has been '__extended__' and has same-named proto chain, copy the Proto chain to Extended chain
-    const isExtended = !!Proto.prototype[PROTOTYPE_IS_EXTENDED_PROP],
-          hasSameChain = !!Proto.prototype[chainPropName];
+    const isExtended = !!Proto.prototype[ PROTOTYPE_IS_EXTENDED_PROP ],
+      hasSameChain = !!Proto.prototype[ chainPropName ];
 
-    const alreadyInChain = Extended.prototype[chainPropName].some(P => P === Proto),
-          shouldBePushed = (!isExtended || !ignoreExtended) && !alreadyInChain,
-          shouldCopyChain = isExtended && hasSameChain;
+    const alreadyInChain = Extended.prototype[ chainPropName ].some( P => P === Proto ),
+      shouldBePushed = ( !isExtended || !ignoreExtended ) && !alreadyInChain,
+      shouldCopyChain = isExtended && hasSameChain;
 
-    if(shouldCopyChain)
-      Proto.prototype[chainPropName].forEach(Proto => {
+    if ( shouldCopyChain )
+      Proto.prototype[ chainPropName ].forEach( Proto => {
         //avoid pushing twice
-        if(!Extended.prototype[chainPropName].some(P => P === Proto) ) {
+        if ( !Extended.prototype[ chainPropName ].some( P => P === Proto ) ) {
           //console.log('pushed', Proto)
-          Extended.prototype[chainPropName].push(Proto);
+          Extended.prototype[ chainPropName ].push( Proto );
         }
-      });
+      } );
 
-    if(shouldBePushed) {
-      Extended.prototype[chainPropName].push(Proto);
+    if ( shouldBePushed ) {
+      Extended.prototype[ chainPropName ].push( Proto );
     }
-  });
+  } );
 
   //console.log(Extended.prototype[chainPropName])
 };
 
-const _extend = (options = {}) => {
-  if(!options.apply)
+const _extend = ( options = {} ) => {
+  if ( !options.apply )
     options.apply = [];
-  if(!options.super)
-    options.super = [];
-  if(!options.static)
-    options.static = [];
+  if ( !options.proto )
+    options.proto = [];
+  // if ( !options.static )
+  //   options.static = []
 
-  const Child = options.super[0];
+  const Child = options.proto[ 0 ];
 
-  if(!options.name)
+  if ( !options.name )
     options.name = Child.name;
 
   function Extended() {
-    Extended.prototype[SUPER_CHAIN_APPLY_PROP].forEach(Super => {
-      if(Super !== Extended) {
-        Super.apply(this, arguments);
+    Extended.prototype[ SUPER_CHAIN_APPLY_PROP ].forEach( Super => {
+      if ( Super !== Extended ) {
+        Super.apply( this, arguments );
       }
-    });
+    } );
   }
 
-  _named(options.name, Extended);
+  _named( options.name, Extended );
 
-  for(let i in options.static) {
-    for(let prop in options.static[i]) {
-      if('prototype' != prop) {
-        Object.defineProperty(Extended, prop, {
-          value: proto[prop],
-          enumerable: true,
-          writable: true
-        });
-      }
-    }
-  }
+  // for ( let i in options.static ) {
+  //   for ( let prop in options.static[ i ] ) {
+  //     if ( 'prototype' != prop ) {
+  //       Object.defineProperty( Extended, prop, {
+  //         value: proto[ prop ],
+  //         enumerable: true,
+  //         writable: true
+  //       } )
+  //     }
+  //   }
+  // }
 
-  Object.defineProperty(Extended, 'prototype', { value: {} });
-  Object.defineProperty(Extended.prototype, 'constructor', { value: Child });
-  Object.defineProperty(Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, { value: true });
+  Object.defineProperty( Extended, 'prototype', {
+    value: {}
+  } );
+  Object.defineProperty( Extended.prototype, 'constructor', {
+    value: Child
+  } );
+  Object.defineProperty( Extended.prototype, PROTOTYPE_IS_EXTENDED_PROP, {
+    value: true
+  } );
 
-  for(let i in options.super) {
+  for ( let i in options.proto ) {
     function Proto() {}
-    Proto.prototype = options.super[i].prototype;
+    Proto.prototype = options.proto[ i ].prototype;
     const proto = new Proto();
 
-    for(let prop in proto) {
-      if(['constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP].indexOf(prop) < 0) {
-        Object.defineProperty(Extended.prototype, prop, {
-          value: proto[prop],
+    for ( let prop in proto ) {
+      if ( [ 'constructor', PROTOTYPE_IS_EXTENDED_PROP, SUPER_CHAIN_PROTO_PROP, SUPER_CHAIN_APPLY_PROP ].indexOf( prop ) < 0 ) {
+        Object.defineProperty( Extended.prototype, prop, {
+          value: proto[ prop ],
           enumerable: true,
           writable: true
-        });
+        } );
       }
     }
   }
 
-  _copyChain(Extended, options.super, SUPER_CHAIN_PROTO_PROP, false);
-  _copyChain(Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true);
+  _copyChain( Extended, options.proto, SUPER_CHAIN_PROTO_PROP, false );
+  _copyChain( Extended, options.apply, SUPER_CHAIN_APPLY_PROP, true );
 
   return Extended
 };
 
-function BufferState(options = {}) {
-  Object.assign(this, {
-		_buffer: [],
-		length: 0
-	}, options);
+function BufferState( options = {} ) {
+  Object.assign( this, {
+    _buffer: [],
+    length: 0
+  }, options );
 }
 
 BufferState.prototype = {
-  push(chunk) {
-    if(chunk.length) {
+  push( chunk ) {
+    if ( chunk.length ) {
       const node = {
-    		chunk: Buffer.from(chunk),
+        chunk: Buffer.from( chunk ),
         encoding: 'binary',
-    		next: null
-    	};
+        next: null
+      };
 
-      if(this._buffer.length) {
-        this._buffer[this._buffer.length - 1].next = node;
+      if ( this._buffer.length ) {
+        this._buffer[ this._buffer.length - 1 ].next = node;
       }
 
-      this._buffer.push(node);
+      this._buffer.push( node );
       this.length += node.chunk.length;
     }
 
     return this.length
   },
 
-  unshift(chunk) {
+  unshift( chunk ) {
     const node = {
-  		chunk: Buffer.from(chunk),
+      chunk: Buffer.from( chunk ),
       encoding: 'binary',
-  		next: null
-  	};
+      next: null
+    };
 
-    if(this._buffer.length) {
-      node.next = this._buffer[0];
+    if ( this._buffer.length ) {
+      node.next = this._buffer[ 0 ];
     }
 
-    this._buffer.unshift(node);
+    this._buffer.unshift( node );
     this.length += node.chunk.length;
 
     return this.length
   },
 
-  nodes(count) {
-    const nodes = this._buffer.splice(0, count);
-    nodes.forEach(node => this.length -= node.chunk.length);
+  nodes( count ) {
+    const nodes = this._buffer.splice( 0, count );
+    nodes.forEach( node => this.length -= node.chunk.length );
 
     return nodes
   },
 
-  at(index) {
-    if(index >= this.length || index < 0) {
+  at( index ) {
+    if ( index >= this.length || index < 0 ) {
       return
     }
 
-    for(let nodeIndex = 0; nodeIndex < this._buffer.length; nodeIndex ++) {
-      const chunk = this._buffer[nodeIndex].chunk;
-      if(index < chunk.length) {
+    for ( let nodeIndex = 0; nodeIndex < this._buffer.length; nodeIndex++ ) {
+      const chunk = this._buffer[ nodeIndex ].chunk;
+      if ( index < chunk.length ) {
         return {
           index,
           nodeIndex,
-          value: chunk[index]
+          value: chunk[ index ]
         }
       }
 
@@ -178,117 +186,119 @@ BufferState.prototype = {
     }
   },
 
-  for(from, to, callee) {
-    const firstNode = this._buffer[from.nodeIndex];
-    for(let index = from.nodeIndex; index < firstNode.chunk.length; index ++) {
-      callee.call(this, firstNode.chunk[index]);
+  for ( from, to, callee ) {
+    const firstNode = this._buffer[ from.nodeIndex ];
+    for ( let index = from.nodeIndex; index < firstNode.chunk.length; index++ ) {
+      callee.call( this, firstNode.chunk[ index ] );
     }
 
-    for(let nodeIndex = 1 + from.nodeIndex; nodeIndex < to.nodeIndex; nodeIndex ++) {
-      const node = this._buffer[nodeIndex];
-      for(let index = 0; index < node.chunk.length; index ++) {
-        callee.call(this, node.chunk[index]);
+    for ( let nodeIndex = 1 + from.nodeIndex; nodeIndex < to.nodeIndex; nodeIndex++ ) {
+      const node = this._buffer[ nodeIndex ];
+      for ( let index = 0; index < node.chunk.length; index++ ) {
+        callee.call( this, node.chunk[ index ] );
       }
     }
 
-    if(from.nodeIndex < to.nodeIndex) {
-      const lastNode = this._buffer[to.nodeIndex];
-      for(let index = 0; index <= to.index; index ++) {
-        callee.call(this, lastNode.chunk[index]);
+    if ( from.nodeIndex < to.nodeIndex ) {
+      const lastNode = this._buffer[ to.nodeIndex ];
+      for ( let index = 0; index <= to.index; index++ ) {
+        callee.call( this, lastNode.chunk[ index ] );
       }
     }
   },
 
-  slice(length) {
-    if(length === undefined) {
+  slice( length ) {
+    if ( length === undefined ) {
       length = this.length;
     }
 
-    if(!length) {
-      return Buffer.from([])
+    if ( !length ) {
+      return Buffer.from( [] )
     }
 
-    if(length > this.length) {
+    if ( length > this.length ) {
       length = this.length;
     }
 
     let to;
 
-    if(length) {
-      to = this.at(length);
+    if ( length ) {
+      to = this.at( length );
     }
 
-    if(!to) {
+    if ( !to ) {
       to = {
         index: this.length - 1,
         nodeIndex: this._buffer.length - 1
       };
     }
 
-    const buffer = Buffer.from(Array(length));
+    const buffer = Buffer.from( Array( length ) );
 
-    const offset = this._buffer.slice(0, to.nodeIndex - 1).reduce((offset, node) => {
-      buffer.set(node.chunk, offset);
-      return offset + node.chunk.length
-    }, 0);
+    const offset = this._buffer.slice( to.nodeIndex - 1 )
+      .reduce( ( offset, node ) => {
+        buffer.set( node.chunk, offset );
+        return offset + node.chunk.length
+      }, 0 );
 
-    if(offset < length) {
-      const node = this._buffer[to.nodeIndex];
+    if ( offset < length ) {
+      const node = this._buffer[ to.nodeIndex ];
 
-      buffer.set(node.chunk.slice(0, length - offset), offset);
+      buffer.set( node.chunk.slice( 0, length - offset ), offset );
     }
 
     return buffer
   },
 
-  buffer(length) {
-    if(length === undefined) {
+  buffer( length ) {
+    if ( length === undefined ) {
       length = this.length;
     }
 
-    if(!length) {
-      return Buffer.from([])
+    if ( !length ) {
+      return Buffer.from( [] )
     }
 
-    if(length > this.length) {
+    if ( length > this.length ) {
       length = this.length;
     }
 
     let to;
 
-    if(length) {
+    if ( length ) {
       // console.time('at')
-      to = this.at(length);
+      to = this.at( length );
       // console.timeEnd('at')
     }
 
-    if(!to) {
+    if ( !to ) {
       to = {
         index: this.length - 1,
         nodeIndex: this._buffer.length - 1
       };
     }
     // console.time('from')
-    const buffer = Buffer.from(Array(length));
+    const buffer = Buffer.from( Array( length ) );
     // console.timeEnd('from')
     // console.time('offset')
 
     // console.timeEnd('buffer')
 
-    const offset = this.nodes(to.nodeIndex).reduce((offset, node) => {
-      buffer.set(node.chunk, offset);
-      return offset + node.chunk.length
-    }, 0);
+    const offset = this.nodes( to.nodeIndex )
+      .reduce( ( offset, node ) => {
+        buffer.set( node.chunk, offset );
+        return offset + node.chunk.length
+      }, 0 );
     // console.timeEnd('offset')
 
-    if(offset < length) {
-      const node = this.nodes(1)[0];
+    if ( offset < length ) {
+      const node = this.nodes( 1 )[ 0 ];
 
-      buffer.set(node.chunk.slice(0, length - offset), offset);
-      if(length - offset < node.chunk.length) {
-        node.chunk = node.chunk.slice(length - offset);
+      buffer.set( node.chunk.slice( 0, length - offset ), offset );
+      if ( length - offset < node.chunk.length ) {
+        node.chunk = node.chunk.slice( length - offset );
 
-        this.unshift(node.chunk);
+        this.unshift( node.chunk );
       }
     }
 
@@ -319,75 +329,80 @@ function series( arr, cb, done ) {
 
 const DEFAULT_HIGHWATERMARK = 64;
 
-function _resetWatcher(watcher) {
-  return Object.assign(watcher, {
+function _resetWatcher( watcher ) {
+  return Object.assign( watcher, {
     active: false,
     currentPattern: null,
     length: 0,
     offset: 0,
     byteIndex: 0,
     patternIndex: 0
-  })
+  } )
 }
 
 function _resetActive() {
   this._busState.active = 0;
-  this.emit('inactive');
+  this.emit( 'inactive' );
 }
 
 function _decrementActive() {
-  if (!--this._busState.active) {
-    this.emit('inactive');
+  if ( !--this._busState.active ) {
+    this.emit( 'inactive' );
   }
 }
 
-function _nextPattern(watcher) {
-  if (1 + watcher.patternIndex < watcher.list.length) {
-    // console.time('next pattern')
-    const nextPattern = watcher.list[++watcher.patternIndex /* patternIndex has already been incremented when checked condition */ ];
-    watcher.byteIndex = 0;
-
-    if (typeof nextPattern == 'function') {
-      try {
-        watcher.currentPattern = nextPattern.call(this, this._busState.slice(watcher.length));
-      } catch (err) {
-        _resetWatcher(watcher);
-        _decrementActive.call(this);
-        this.emit('error', err);
-      }
-    } else {
-      watcher.currentPattern = nextPattern;
-    }
-    // console.timeEnd('next pattern')
-  } else {
-    _found.call(this, watcher);
-  }
-}
-
-function _found(watcher) {
-  const { _busState } = this;
-  const { watching } = _busState;
-  const chunk = _busState.buffer(watcher.length);
+function _found( watcher ) {
+  const {
+    _busState
+  } = this;
+  const {
+    watching
+  } = _busState;
+  const chunk = _busState.buffer( watcher.length );
   _busState.nodeIndex = -1;
   try {
     // console.time( 'cb' )
     watcher.callback(
       chunk,
       // frame.splice(-watcher.length),
-      watcher.pattern
+      watcher
     );
     // console.timeEnd( 'cb' )
-  } catch (err) {
-    this.emit('error', err);
+  } catch ( err ) {
+    this.emit( 'error', err );
   }
   // _busState.watching = []
   // console.time( 'reset' )
-  watching.forEach(_resetWatcher);
-  _resetActive.call(this);
+  watching.forEach( _resetWatcher );
+  _resetActive.call( this );
   // console.timeEnd( 'reset' )
 }
 
+function _nextPattern( watcher ) {
+  if ( 1 + watcher.patternIndex < watcher.list.length ) {
+    // console.time('next pattern')
+    const nextPattern = watcher.list[ ++watcher.patternIndex /* patternIndex has already been incremented when checked condition */ ];
+    watcher.byteIndex = 0;
+
+    if ( typeof nextPattern == 'function' ) {
+      try {
+        watcher.currentPattern = nextPattern.call( this, this._busState.slice( 1 + watcher.length ) );
+      } catch ( err ) {
+        _resetWatcher( watcher );
+        _decrementActive.call( this );
+        this.emit( 'error', err );
+      }
+    } else {
+      watcher.currentPattern = nextPattern;
+    }
+    // console.timeEnd('next pattern')
+  } else {
+    _found.call( this, watcher );
+  }
+}
+
 function _push() {
+  // console.log( '_push()' )
   const {
     _busState
   } = this;
@@ -396,156 +411,172 @@ function _push() {
     _buffer
   } = _busState;
 
-  for (; _busState.nodeIndex < _buffer.length; _busState.nodeIndex++) {
-    if (!watching.length) {
-      this.emit('error', {
+  for ( ; _busState.nodeIndex < _buffer.length; _busState.nodeIndex++ ) {
+    if ( !watching.length ) {
+      this.emit( 'error', {
         msg: 'Unexpected incoming data',
         data: _busState.buffer()
-      });
+      } );
       return
     }
 
-    if (_busState.nodeIndex < 0) {
+    if ( _busState.nodeIndex < 0 ) {
       _busState.nodeIndex = 0;
     }
 
     const {
       chunk
-    } = _buffer[_busState.nodeIndex];
+    } = _buffer[ _busState.nodeIndex ];
     let currentChunkIndex = 0;
     let watcherIndex = 0;
     let isEqual = false;
-    for (; currentChunkIndex < chunk.length; currentChunkIndex++) {
-      if (!_busState.active) {
-        _busState.active = _busState.watching.reduce((active, watcher) => {
-          const {
-            list
-          } = watcher;
-          try {
-            watcher.currentPattern = typeof list[0] == 'function' ? list[0](_busState.slice(watcher.length)) : list[0];
-            watcher.active = true;
-            return 1 + active
-          } catch (err) {
-            this.emit('error', err);
-            return active
-          }
-        }, 0);
-      }
+    if ( !_busState.active ) {
+      _busState.active = _busState.watching.reduce( ( active, watcher ) => {
+        const {
+          list
+        } = watcher;
+        try {
+          watcher.currentPattern = typeof list[ 0 ] == 'function' ? list[ 0 ].call( this, _busState.slice( watcher.length ) ) : list[ 0 ];
+          watcher.active = true;
+          return 1 + active
+        } catch ( err ) {
+          this.emit( 'error', err );
+          return active
+        }
+      }, 0 );
+    }
 
-      const byte = chunk[currentChunkIndex];
+    for ( ; currentChunkIndex < chunk.length; currentChunkIndex++ ) {
+      const byte = chunk[ currentChunkIndex ];
 
-      for (watcherIndex = 0; watcherIndex < watching.length; watcherIndex++, isEqual = false) {
-        const watcher = watching[watcherIndex];
-        if (!watcher.active) {
+      for ( watcherIndex = 0; watcherIndex < watching.length; watcherIndex++, isEqual = false ) {
+        const watcher = watching[ watcherIndex ];
+        if ( !watcher.active ) {
           continue
         }
 
         const {
           currentPattern
         } = watcher;
-        // let isEqual = false
 
-        if (Array.isArray(currentPattern)) {
-          const expected = currentPattern[watcher.byteIndex];
+        if ( Array.isArray( currentPattern ) || ArrayBuffer.isView( currentPattern ) ) {
+          const expected = currentPattern[ watcher.byteIndex ];
 
-          // console.log('current watching:', watcher.currentPattern)
-          // console.log('current chunk:', chunk)
-          // console.log('byte:', byte)
-          // console.log('expected:', expected)
-
-          if (expected === undefined || (typeof expected == 'number' && expected === byte)) {
+          if ( expected === undefined || ( typeof expected == 'number' && expected === byte ) ) {
             isEqual = true;
-          } else if (typeof expected == 'function') {
+          } else if ( typeof expected == 'function' ) {
             try {
-              isEqual = !!expected.call(this, byte, watcher.length /*i.e. index*/ , _busState.slice(watcher.length /*i.e. actual length*/ ));
-            } catch (err) {
-              this.emit('error', err);
+              isEqual = !!expected.call( this, byte, watcher.length - 1 /*i.e. index*/ , _busState.slice( 1 + watcher.length /*i.e. actual length*/ ) );
+            } catch ( err ) {
+              this.emit( 'error', err );
             }
           }
 
-          if (isEqual) {
+          // if ( !isEqual ) {
+          //   console.log( 'current watching:', watcher.currentPattern )
+          //   console.log( 'current chunk:', chunk )
+          //   console.log( 'byte:', byte )
+          //   console.log( 'expected:', expected )
+          // }
+
+          if ( isEqual ) {
             ++watcher.length;
 
-            if (1 + watcher.byteIndex < currentPattern.length) {
+            if ( 1 + watcher.byteIndex < currentPattern.length ) {
               ++watcher.byteIndex;
             } else {
-              _nextPattern.call(this, watcher);
+              _nextPattern.call( this, watcher );
             }
           } else {
-            _resetWatcher(watcher);
-            _decrementActive.call(this);
+            _resetWatcher( watcher );
+            _decrementActive.call( this );
 
-            if (!_busState.active) {
-              this.emit('error', {
-                msg: 'Unparsed chunk',
-                data: _busState.buffer()
-              });
+            // console.log( 'active', _busState.active )
+
+            if ( !_busState.active ) {
+              this.emit( 'error', {
+                message: 'Unparsed chunk',
+                expected,
+                actual: byte,
+                pattern: currentPattern,
+                chunk: _busState.buffer(),
+                index: currentChunkIndex,
+                value: byte
+              } );
             }
+
+            // break
           }
-        } else if (typeof currentPattern == 'number') {
-          if (currentPattern <= 0) {
-            throw new RangeError('Pattern length should be a positive integer, but set to', currentPattern)
+        } else if ( typeof currentPattern == 'number' ) {
+          if ( currentPattern <= 0 ) {
+            throw Object.assign( new ReferenceError( 'Pattern length should be a positive integer' ), {
+              pattern: currentPattern
+            } )
           }
 
-          if (watcher.offset <= 0) {
+          if ( watcher.offset <= 0 ) {
             watcher.offset = currentPattern;
           }
 
           watcher.length++;
 
-          if (--watcher.offset < 1) {
-            _nextPattern.call(this, watcher);
-          }
+            if ( --watcher.offset < 1 ) {
+              _nextPattern.call( this, watcher );
+            }
+        } else {
+          throw new TypeError( `Cannot parse pattern of ${ typeof currentPattern } type` )
         }
       }
     }
   }
 
-  if (_busState.active) {
-    this.emit('drain');
+  if ( _busState.active ) {
+    this.emit( 'drain' );
   }
 }
 
-function _Bus$1(options = {}) {
+function _Bus$1( options = {} ) {
   this.transport = options.transport;
   this.type = options.type;
-  this._setup = options.setup.bind(this);
-  this._read = length => options.read.call(this, length === undefined ? length : this.options.highWaterMark);
-  this._write = options.write.bind(this);
+  this._setup = options.setup.bind( this );
+  this._read = length => options.read.call( this, length === undefined ? length : this.options.highWaterMark );
+  this._write = options.write.bind( this );
 
   this.options = {
     highWaterMark: options.highWaterMark || DEFAULT_HIGHWATERMARK
   };
 
-  this._busState = new BufferState({
+  this._busState = new BufferState( {
     watching: [],
     active: 0,
     nodeIndex: 0,
     configured: false,
     ticker: false
-  });
+  } );
 }
 
 _Bus$1.prototype = {
   setup() {
-    if (this._busState.configured) {
-      return Promise.reject('already configured')
+    if ( this._busState.configured ) {
+      return Promise.reject( 'already configured' )
     }
 
     this._busState.configured = true;
-    return this._setup.apply(this, arguments)
+    return this._setup.apply( this, arguments )
   },
 
-  push(chunk) {
-    if (chunk.length) {
-      this._busState.push(chunk);
+  push( chunk ) {
+    // console.log( 'push()' )
+    // console.log( chunk )
+    if ( chunk.length ) {
+      this._busState.push( chunk );
 
-      if (!this._busState.ticker) {
+      if ( !this._busState.ticker ) {
         this._busState.ticker = true;
-        setImmediate(() => {
+        setImmediate( () => {
           this._busState.ticker = false;
-          _push.call(this);
-        });
+          _push.call( this );
+        } );
       }
     }
     // const highWaterMark = this.options.highWaterMark,
@@ -570,32 +601,32 @@ _Bus$1.prototype = {
     // }
   },
 
-  watch(list, cb) {
-    const watcher = _resetWatcher({
+  watch( list, cb ) {
+    const watcher = _resetWatcher( {
       list,
-      callback: cb.bind(this)
-    });
+      callback: cb.bind( this )
+    } );
 
-    this._busState.watching.push(watcher);
+    this._busState.watching.push( watcher );
 
     return watcher
   },
 
-  unwatch(watcher) {
-    if (watcher) {
-      const index = this._busState.watching.indexOf(watcher);
+  unwatch( watcher ) {
+    if ( watcher ) {
+      const index = this._busState.watching.indexOf( watcher );
 
-      if (index >= 0) {
-        if (this._busState.watching[index].active) {
-          _resetWatcher(watcher);
-          _decrementActive.call(this);
+      if ( index >= 0 ) {
+        if ( this._busState.watching[ index ].active ) {
+          _resetWatcher( watcher );
+          _decrementActive.call( this );
         }
 
-        this._busState.watching.splice(index, 1);
+        this._busState.watching.splice( index, 1 );
       }
     } else {
-      this._busState.watching.splice(0);
-      _resetActive.call(this);
+      this._busState.watching.splice( 0 );
+      _resetActive.call( this );
     }
 
     return this
@@ -605,25 +636,25 @@ _Bus$1.prototype = {
     @TODO Promise interface
   */
 
-  expect(list, ...args) {
+  expect( list, ...args ) {
     let cb, options = {};
 
-    if (typeof args[0] == 'function') {
-      cb = args[0];
-    } else if (typeof args[1] == 'function') {
-      cb = args[1];
-      Object.assign(options, args[0]);
+    if ( typeof args[ 0 ] == 'function' ) {
+      cb = args[ 0 ];
+    } else if ( typeof args[ 1 ] == 'function' ) {
+      cb = args[ 1 ];
+      Object.assign( options, args[ 0 ] );
     } else {
-      throw new ReferenceError('Callback is not provided')
+      throw new ReferenceError( 'Callback is not provided' )
     }
 
     let watcher;
     const setWatcher = () => {
-      watcher = this.watch(list, (...args) => {
-        this.unwatch(watcher);
-        cb.apply(this, args);
-      });
-      this._read(this.options.highWaterMark);
+      watcher = this.watch( list, ( ...args ) => {
+        this.unwatch( watcher );
+        cb.apply( this, args );
+      } );
+      this._read( this.options.highWaterMark );
     };
 
     // if ( 'timeout' in options ) {
@@ -637,28 +668,28 @@ _Bus$1.prototype = {
     return watcher
   },
 
-  send(binary, options = {}) {
-    if ('timeout' in options) {
-      setTimeout(() => {
-        this._write(binary);
-      }, options.timeout);
+  send( binary, options = {} ) {
+    if ( 'timeout' in options ) {
+      setTimeout( () => {
+        this._write( binary );
+      }, options.timeout );
     } else {
-      this._write(binary);
+      this._write( binary );
     }
 
     return this
   },
 
   reset() {
-    this._busState.watching.splice(0);
+    this._busState.watching.splice( 0 );
     return this
   }
 };
 
-const Bus$1 = _extend({
-  super: [EventEmitter, _Bus$1],
-  apply: [EventEmitter, _Bus$1]
-});
+const Bus$1 = _extend( {
+  proto: [ EventEmitter, _Bus$1 ],
+  apply: [ EventEmitter, _Bus$1 ]
+} );
 
 var data$2 = { PN532_PREAMBLE:0,
   PN532_STARTCODE1:0,
@@ -880,53 +911,52 @@ var MIFARE_COMMAND_WRITE_16 = data$2.MIFARE_COMMAND_WRITE_16;
 var PN532_BRTY_ISO14443A = data$2.PN532_BRTY_ISO14443A;
 var PN532_BRTY_ISO14443B = data$2.PN532_BRTY_ISO14443B;
 
-const check = values => !(0xff & (-values.reduce((sum, value) => sum + value, 0)));
+const check = values => !( 0xff & ( -values.reduce( ( sum, value ) => sum + value, 0 ) ) );
 
-const LCS = (byte, length, frame) => check(frame.slice(-2));
+const LCS = ( byte, length, frame ) => check( frame.slice( -2 ) );
 
-const CHECKSUM = (byte, length, frame) => check(frame.slice(5));
+const CHECKSUM = ( byte, length, frame ) => check( frame.slice( 5 ) );
 
-const BODY = frame => frame[3] - 1; /* response code + payload */
+const BODY = frame => frame[ 3 ] - 1; /* response code + payload */
 
 const INFO = [
-  [PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS, PN532_PN532_TO_HOST],
-  BODY,
-  [CHECKSUM, PN532_POSTAMBLE]
+  [ PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, undefined, LCS, PN532_PN532_TO_HOST ],
+  BODY, [ CHECKSUM, PN532_POSTAMBLE ]
 ];
 
 
 
 const ERR = [
-  [PN532_PREAMBLE, PN532_STARTCODE1 , PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM, PN532_POSTAMBLE]
+  [ PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x01, 0xff, undefined, CHECKSUM, PN532_POSTAMBLE ]
 ];
 
 const ACK = [
-  new Uint8Array([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE])
+  new Uint8Array( [ PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0x00, 0xff, PN532_POSTAMBLE ] )
 ];
 
 const NACK = [
-  new Uint8Array([PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff, 0x00, PN532_POSTAMBLE])
+  new Uint8Array( [ PN532_PREAMBLE, PN532_STARTCODE1, PN532_STARTCODE2, 0xff, 0x00, PN532_POSTAMBLE ] )
 ];
 
 const command = command =>
-  new Uint8Array([
+  new Uint8Array( [
     PN532_PREAMBLE,
     PN532_STARTCODE1,
     PN532_STARTCODE2,
-    0xff & (command.length + 1),
-    0xff & (~command.length),
+    0xff & ( command.length + 1 ),
+    0xff & ( ~command.length ),
     PN532_HOST_TO_PN532,
     ...command,
     // checksum
-    0xff & (-command.reduce((checksum, byte) => checksum + byte, PN532_HOST_TO_PN532)),
+    0xff & ( -command.reduce( ( checksum, byte ) => checksum + byte, PN532_HOST_TO_PN532 ) ),
     PN532_POSTAMBLE
-  ]);
+  ] );
 
 const parseInfo = chunk => {
   return {
     raw: chunk,
     code: chunk[ 6 ],
-    body: Buffer.from( chunk.slice( 7, 5 + chunk[ 3 ] ) )
+    body: chunk.slice( 7, 5 + chunk[ 3 ] )
   }
 };
 
@@ -934,7 +964,7 @@ const parseBlockData = data => {
   if ( data.body.length == 1 ) {
     throw {
       cmd: data.code,
-      errCode: data.body[ 0 ]
+      code: data.body[ 0 ]
     }
   } else {
     return {
@@ -951,8 +981,10 @@ _Bus.prototype = {
         // Don't be silly again - info frame refers to index from beginning, i.e. to ACK
         // this.expect([...ACK, ...info], chunk => done((parsers || [sliceAck, parseInfo]).reduce((data, parse) => parse(data), chunk)))
         this.expect( ACK, () => {
-          this.expect( info, chunk => done( ( parsers || [ parseInfo ] )
-            .reduce( ( data, parse ) => parse( data ), chunk ) ) );
+          this.expect( info, chunk => {
+            const _parsers = parsers || [ parseInfo ];
+            done( _parsers.reduce( ( data, parse ) => parse( data ), chunk ) );
+          } );
         } );
 
         this.expect( NACK, fail );
@@ -1053,49 +1085,55 @@ _Bus.prototype = {
   }
 };
 
-var Bus = _extend({ super: [Bus$1, _Bus], apply: [Bus$1, _Bus] });
-
-// import Bus from 'bus'
+var Bus = _extend( {
+  proto: [ Bus$1, _Bus ],
+  apply: [ Bus$1, _Bus ]
+} );
 
 const transport = {
-  buffer: Buffer.from([]),
-  read(length) {
-    const chunk = this.buffer.slice(0, length);
-    this.buffer = Buffer.from(this.buffer, length);
+  buffer: Buffer.from( [] ),
+  read( length ) {
+    const chunk = this.buffer.slice( 0, length );
+    this.buffer = Buffer.from( this.buffer, length );
     return chunk
   },
 
-  write(chunk) {
-    this.buffer = Buffer.concat([this.buffer, Buffer.from(chunk)]);
+  write( chunk ) {
+    this.buffer = Buffer.concat( [ this.buffer, Buffer.from( chunk ) ] );
   }
 };
 
-const preamble = [1, 2, 3];
-const postamble = [4, 5, 6];
+const preamble = [ 1, 2, 3 ];
+const postamble = new Uint8Array( [ 4, 5, 6 ] );
 
-const bus = new Bus({ transport, read(length) {
-  const chunk = this.transport.read(length);
+const bus = new Bus( {
+  transport,
+  read( length ) {
+    const chunk = this.transport.read( length );
 
-  this.push(chunk);
-}, write(chunk) {
-  this.transport.write(chunk);
-}, setup() {
-  this.on('error', console.error);
-  this.on('drain', console.log.bind(this, 'drain'));
-} });
+    this.push( chunk );
+  },
+  write( chunk ) {
+    this.transport.write( chunk );
+  },
+  setup() {
+    this.on( 'error', console.error );
+    this.on( 'drain', console.log.bind( this, 'drain' ) );
+  }
+} );
 
 bus.setup();
 
-bus.expect([
+bus.expect( [
   6
   // preamble,
   // // 2,
   // postamble
 ], data => {
-  console.warn('incoming', data);
-});
+  console.warn( 'incoming', data );
+} );
 
-bus.push(preamble);
+bus.push( preamble );
 // bus.push([1, 2])
-bus.push(postamble);
+bus.push( postamble );
 // bus.push('unexpected')
