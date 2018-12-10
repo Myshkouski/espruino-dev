@@ -11,6 +11,6 @@ const arrayBufferViewInstances = [
   DataView
 ]
 
-ArrayBuffer.isView = value => typeof value == 'object' && value.buffer instanceof ArrayBuffer // arrayBufferViewInstances.some( ArrayBufferView => value instanceof ArrayBufferView )
+ArrayBuffer.isView = value => typeof value === 'object' && value.buffer instanceof ArrayBuffer // arrayBufferViewInstances.some( ArrayBufferView => value instanceof ArrayBufferView )
 
 export default ArrayBuffer

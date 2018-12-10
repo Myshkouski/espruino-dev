@@ -4,4 +4,10 @@ import Duplex from './duplex'
 import Transform from './transform'
 import PassThrough from './passthrough'
 
-export { Readable, Writable, Duplex, Transform, PassThrough }
+export {
+  Readable,
+  Writable,
+  Duplex,
+  Transform,
+  PassThrough
+}

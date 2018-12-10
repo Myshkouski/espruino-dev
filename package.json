@@ -1,12 +1,8 @@
 {
-  "name": "espruino-dev",
-  "version": "0.0.1-alpha.3",
-  "description": "",
   "main": "bundle/index.esp.min.js",
   "dependencies": {
     "esp-ndef": "^0.1.4-beta.4",
-    "espruino": "^0.1.6",
-    "file-marker": "0.0.1-alpha.2"
+    "espruino": "^0.1.6"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
@@ -17,11 +13,9 @@
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "json-loader": "^0.5.7",
-    "lodash.defaultsdeep": "^4.6.0",
     "mocha": "^4.1.0",
     "mocha-webpack": "^1.1.0",
     "rollup": "^0.50.1",
-    "rollup-analyzer-plugin": "^1.1.1",
     "rollup-plugin-alias": "^1.4.0",
     "rollup-plugin-babel": "^3.0.3",
     "rollup-plugin-commonjs": "^8.4.1",
@@ -38,15 +32,13 @@
     "rollup-plugin-uglify": "^2.0.1",
     "rollup-plugin-yaml": "^1.1.0",
     "serialport": "^6.1.1",
-    "webpack": "^3.11.0",
     "yaml-loader": "^0.5.0"
   },
   "scripts": {
     "flash": "espruino bundle/index.pico.min.js",
     "build": "rollup -c build/rollup.js",
-    "sandbox": "webpack --config build/test.webpack.js -w sandbox/ .tmp/sandbox",
+    "sandbox": "webpack-cli --config build/test.webpack.js -w sandbox/ .tmp/sandbox",
     "test": "mocha-webpack --webpack-config build/test.webpack.js test/"
   },
-  "author": "Alexei Myshkouski",
-  "license": "MIT"
+  "author": "Alexei Myshkouski"
 }

@@ -35,6 +35,223 @@ Array.prototype.concat = function () {
   return concatenated;
 };
 
+// var PENDING = 'pending'
+// var SEALED = 'sealed'
+// var FULFILLED = 'fulfilled'
+// var REJECTED = 'rejected'
+//
+// var NOOP = function() {}
+//
+// function invokeResolver(resolver, promise) {
+//   function resolvePromise(value) {
+//     resolve(promise, value)
+//   }
+//
+//   function rejectPromise(reason) {
+//     reject(promise, reason)
+//   }
+//
+//   try {
+//     resolver(resolvePromise, rejectPromise)
+//   } catch(e) {
+//     rejectPromise(e)
+//   }
+// }
+//
+// function invokeCallback(subscriber) {
+//   var owner = subscriber.owner
+//   var settled = owner.state_
+//   var value = owner.data_
+//   var callback = subscriber[settled]
+//   var promise = subscriber.then
+//
+//   if (typeof callback === 'function')
+//   {
+//     settled = FULFILLED
+//     try {
+//       value = callback(value)
+//     } catch(e) {
+//       reject(promise, e)
+//     }
+//   }
+//
+//   if (!handleThenable(promise, value))
+//   {
+//     if (settled === FULFILLED)
+//       resolve(promise, value)
+//
+//     if (settled === REJECTED)
+//       reject(promise, value)
+//   }
+// }
+//
+// function handleThenable(promise, value) {
+//   var resolved
+//
+//   try {
+//     if (promise === value)
+//       throw new TypeError('A promises callback cannot return that same promise.')
+//
+//     if (value && (typeof value === 'function' || typeof value === 'object'))
+//     {
+//       var then = value.then  // then should be retrived only once
+//
+//       if (typeof then === 'function')
+//       {
+//         then.call(value, function(val){
+//           if (!resolved)
+//           {
+//             resolved = true
+//
+//             if (value !== val)
+//               resolve(promise, val)
+//             else
+//               fulfill(promise, val)
+//           }
+//         }, function(reason){
+//           if (!resolved)
+//           {
+//             resolved = true
+//
+//             reject(promise, reason)
+//           }
+//         })
+//
+//         return true
+//       }
+//     }
+//   } catch (e) {
+//     if (!resolved)
+//       reject(promise, e)
+//
+//     return true
+//   }
+//
+//   return false
+// }
+//
+// function resolve(promise, value){
+//   if (promise === value || !handleThenable(promise, value))
+//     fulfill(promise, value)
+// }
+//
+// function publish(promise) {
+//   var callbacks = promise.then_
+//   promise.then_ = undefined
+//
+//   for (var i = 0 i < callbacks.length i++) {
+//     invokeCallback(callbacks[i])
+//   }
+// }
+//
+// function fulfill(promise, value){
+//   if (promise.state_ === PENDING)
+//   {
+//     promise.state_ = SEALED
+//     promise.data_ = value
+//
+//     setImmediate(() => {
+//       promise.state_ = FULFILLED
+//       publish(promise)
+//     })
+//   }
+// }
+//
+// function reject(promise, reason){
+//   if (promise.state_ === PENDING)
+//   {
+//     promise.state_ = SEALED
+//     promise.data_ = reason
+//
+//     setImmediate(() => {
+//       promise.state_ = REJECTED
+//       publish(promise)
+//     })
+//   }
+// }
+//
+// function Promise(resolver) {
+//   if (typeof resolver !== 'function')
+//     throw new TypeError('Promise constructor takes a function argument')
+//
+//   if (this instanceof Promise === false)
+//     throw new TypeError('Failed to construct \'Promise\': Please use the \'new\' operator, this object constructor cannot be called as a function.')
+//
+//   this.then_ = []
+//
+//   invokeResolver(resolver, this)
+// }
+//
+// Promise.prototype = {
+//   constructor: Promise,
+//
+//   state_: PENDING,
+//   then_: null,
+//   data_: undefined,
+//
+//   then: function(onFulfillment, onRejection){
+//     var subscriber = {
+//       owner: this,
+//       then: new this.constructor(NOOP),
+//       fulfilled: onFulfillment,
+//       rejected: onRejection
+//     }
+//
+//     if (this.state_ === FULFILLED || this.state_ === REJECTED)
+//     {
+//       // already resolved, call callback async
+//       setImmediate(() => {invokeCallback(subscriber)})
+//     }
+//     else
+//     {
+//       // subscribe
+//       this.then_.push(subscriber)
+//     }
+//
+//     return subscriber.then
+//   },
+//
+//   'catch': function(onRejection) {
+//     return this.then(null, onRejection)
+//   }
+// }
+
+// Promise.all = function(promises) {
+//   if (!(promises instanceof Array)) {
+//     throw new TypeError('You must pass an array to Promise.all().')
+//   }
+//
+//   return new Promise((resolve, reject) => {
+//     var results = []
+//     var remaining = 0
+//
+//     function resolver(index) {
+//       remaining++
+//       return function(value) {
+//         results[index] = value
+//         if (!--remaining) {
+//           resolve(results)
+//         }
+//       }
+//     }
+//
+//     for (var i = 0, promise; i < promises.length; i++) {
+//       promise = promises[i]
+//
+//       if (promise && typeof promise.then === 'function') {
+//         promise.then(resolver(i), reject)
+//       }
+//       else {
+//         results[i] = promise
+//       }
+//     }
+//
+//     if (!remaining) {
+//       resolve(results)
+//     }
+//   })
+// }
+
 Promise.race = function (promises) {
   var Class = this;
 
@@ -49,39 +266,41 @@ Promise.race = function (promises) {
   });
 };
 
-// Promise.resolve = function(value) {
-//   var Class = this
-//
-//   if (value && typeof value === 'object' && value.constructor === Class)
-//     return value
-//
-//   return new Class(function(resolve){
-//     resolve(value)
-//   })
-// }
-//
-// Promise.reject = function(reason){
-//   var Class = this
-//
-//   return new Class(function(resolve, reject){
-//     reject(reason)
-//   })
-// }
-//
-
 var _typeof$1 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 ArrayBuffer.isView = function (value) {
-  return (typeof value === 'undefined' ? 'undefined' : _typeof$1(value)) == 'object' && value.buffer instanceof ArrayBuffer;
+  return (typeof value === 'undefined' ? 'undefined' : _typeof$1(value)) === 'object' && value.buffer instanceof ArrayBuffer;
 }; // arrayBufferViewInstances.some( ArrayBufferView => value instanceof ArrayBufferView )
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
+// import Uint8Array from './Uint8Array'
+// import { toBuffer } from './utils/to'
+
+// function copy(target) {
+// 	const targetStart 	= arguments[1] !== undefined ? arguments[1] : 0,
+// 				sourceStart 	= arguments[2] !== undefined ? arguments[2] : 0,
+// 				sourceEnd 		= arguments[3] !== undefined ? arguments[3] : source.length
+//
+// 	let copied = 0
+//
+// 	for(let sourceIndex = sourceStart, targetIndex = targetStart; sourceIndex < sourceEnd; sourceIndex++, targetIndex++, copied++)
+// 		target.set([ this[sourceIndex] ], targetIndex)
+//
+// 	return copied
+// }
+
+var Proto = Uint8Array;
+
 function Buffer() {
-  throw new Error('Buffer constructor is deprecated. Use Buffer.from() instead.');
+  throw new Error('Buffer proto is deprecated. Use Buffer.from() instead.');
 }
 
-Buffer.from = function (iterable, offset, length) {
+Buffer.isBuffer = function (value) {
+  return value instanceof Proto;
+};
+
+Buffer.from = function from(iterable, offset, length) {
   if (typeof iterable == 'string') {
     var parsed = [];
 
@@ -89,22 +308,24 @@ Buffer.from = function (iterable, offset, length) {
       parsed[c] = iterable.charCodeAt(c);
     }
 
-    return new Uint8Array(parsed);
+    return new Proto(parsed);
+  } else if (Array.isArray(iterable) || this.isBuffer(iterable)) {
+    return new Proto(iterable);
   } else if (iterable instanceof ArrayBuffer) {
-    return new Uint8Array(iterable.slice(offset !== undefined ? offset : 0, offset + (length !== undefined ? length : iterable.length)));
-  } else if (iterable instanceof Array || iterable instanceof Uint8Array) {
-    return new Uint8Array(iterable);
+    offset = offset !== undefined ? offset : 0;
+    length = length !== undefined ? length : iterable.byteLength;
+    return new Proto(iterable.slice(offset, offset + length));
   } else {
     throw new TypeError('Cannot create buffer from', typeof iterable === 'undefined' ? 'undefined' : _typeof(iterable));
   }
 };
 
-Buffer.concat = function (_list, _totalLength) {
+Buffer.concat = function concat(_list, _totalLength) {
   var list = _list || [],
       totalLength = _totalLength !== undefined ? _totalLength : list.reduce(function (totalLength, array) {
     return totalLength + array.length;
   }, 0),
-      buffer = Buffer.from([], 0, totalLength);
+      buffer = this.from([], 0, totalLength);
 
   list.reduce(function (offset, buf) {
     buffer.set(buf, offset);
@@ -113,6 +334,8 @@ Buffer.concat = function (_list, _totalLength) {
 
   return buffer;
 };
+
+var buffer = Buffer;
 
 Object.assign = function (target) {
   for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -400,6 +623,8 @@ EventEmitter.prototype = {
   }
 };
 
+var bufferFrom = require('buffer-from');
+
 function BufferState() {
   var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
@@ -409,14 +634,18 @@ function BufferState() {
   }, options);
 }
 
+function createNode(chunk) {
+  return {
+    chunk: bufferFrom(chunk),
+    encoding: 'binary',
+    next: null
+  };
+}
+
 BufferState.prototype = {
   push: function push(chunk) {
     if (chunk.length) {
-      var node = {
-        chunk: Buffer.from(chunk),
-        encoding: 'binary',
-        next: null
-      };
+      var node = createNode(chunk);
 
       if (this._buffer.length) {
         this._buffer[this._buffer.length - 1].next = node;
@@ -429,11 +658,7 @@ BufferState.prototype = {
     return this.length;
   },
   unshift: function unshift(chunk) {
-    var node = {
-      chunk: Buffer.from(chunk),
-      encoding: 'binary',
-      next: null
-    };
+    var node = createNode(chunk);
 
     if (this._buffer.length) {
       node.next = this._buffer[0];
@@ -498,7 +723,7 @@ BufferState.prototype = {
     }
 
     if (!length) {
-      return Buffer.from([]);
+      return bufferFrom([]);
     }
 
     if (length > this.length) {
@@ -518,7 +743,7 @@ BufferState.prototype = {
       };
     }
 
-    var buffer = Buffer.from(Array(length));
+    var buffer = bufferFrom(Array(length));
 
     var offset = this._buffer.slice(to.nodeIndex - 1).reduce(function (offset, node) {
       buffer.set(node.chunk, offset);
@@ -539,7 +764,7 @@ BufferState.prototype = {
     }
 
     if (!length) {
-      return Buffer.from([]);
+      return bufferFrom([]);
     }
 
     if (length > this.length) {
@@ -561,7 +786,7 @@ BufferState.prototype = {
       };
     }
     // console.time('from')
-    var buffer = Buffer.from(Array(length));
+    var buffer = bufferFrom(Array(length));
     // console.timeEnd('from')
     // console.time('offset')
 
@@ -611,6 +836,7 @@ function series(arr, cb, done) {
 
 var _typeof$2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
+//import Schedule from 'schedule'
 var DEFAULT_HIGHWATERMARK = 64;
 
 function _resetWatcher(watcher) {
@@ -1353,6 +1579,36 @@ var Bus = _extend({
   apply: [Bus$1, _Bus]
 });
 
+// import Bus from 'bus'
+//
+// const preamble = [ 1, 2, 3 ]
+// const postamble = [ 4, ( {
+//   getFrame,
+//   getAbsoluteIndex,
+//   getRelativeIndex
+// } ) => {
+//   console.log( getAbsoluteIndex( 1 ), getRelativeIndex( 0 ) )
+//   return true
+// }, 6 ]
+//
+// const bus = new Bus( {
+//   read() {},
+//   write() {},
+//   setup() {}
+// } )
+//
+// bus.on( 'error', console.error )
+//
+// bus.expect( [
+//   preamble,
+//   postamble
+// ], console.log )
+//
+// bus.push( preamble )
+// bus.push( postamble )
+
+// import Bus from 'bus'
+// import Schedule from 'schedule'
 function setup() {
   var _this = this;
 
@@ -1360,7 +1616,7 @@ function setup() {
     this.transport.setup(115200);
 
     this.transport.on('data', function (data) {
-      console.log(Buffer.from(data));
+      console.log(buffer.from(data));
       _this.push(data);
     });
 

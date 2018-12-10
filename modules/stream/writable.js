@@ -4,7 +4,7 @@ import BufferState from './bufferState'
 function _readFromInternalBuffer(...args) {
   const spliced = this._writableState.nodes(...args)
 
-  if(this._writableState.needDrain && (this._writableState.length < this.options.highWaterMark)) {
+  if (this._writableState.needDrain && (this._writableState.length < this.options.highWaterMark)) {
     this._writableState.needDrain = false
     this.emit('drain')
   }
@@ -13,20 +13,22 @@ function _readFromInternalBuffer(...args) {
 }
 
 function _flush() {
-  const { _writableState } = this
+  const {
+    _writableState
+  } = this
 
-  if(_writableState.corked)
+  if (_writableState.corked)
     return
 
-  if(!_writableState.length) {
-    if(_writableState.ended)
+  if (!_writableState.length) {
+    if (_writableState.ended)
       this.emit('finish')
 
     return
   }
 
   const cb = err => {
-    if(err)
+    if (err)
       this.emit('error', err)
 
     _writableState.consumed = true
@@ -36,10 +38,10 @@ function _flush() {
     })
   }
 
-  if(!_writableState.corked && _writableState.consumed) {
+  if (!_writableState.corked && _writableState.consumed) {
     _writableState.consumed = false
 
-    if(this._writev) {
+    if (this._writev) {
       const nodes = _readFromInternalBuffer.call(this)
 
       this._writev(nodes, cb)
@@ -52,7 +54,7 @@ function _flush() {
 }
 
 function _Writable(options = {}) {
-	this._write = options.write.bind(this)
+  this._write = options.write.bind(this)
 
   this._writableState = new BufferState({
     getBuffer: () => this._writableState._buffer,
@@ -66,11 +68,14 @@ function _Writable(options = {}) {
 }
 
 _Writable.prototype = {
-  write(chunk/*, encoding*/) {
-    const { _writableState } = this,
-          { buffer } = _writableState
+  write(chunk /*, encoding*/ ) {
+    const {
+      _writableState
+    } = this, {
+      buffer
+    } = _writableState
 
-    if(_writableState.ended)
+    if (_writableState.ended)
       throw new Error('Write after end')
 
     this._writableState.push(chunk)
@@ -91,7 +96,7 @@ _Writable.prototype = {
   },
 
   uncork() {
-    if(this._writableState.corked > 0) {
+    if (this._writableState.corked > 0) {
       this._writableState.corked--
       _flush.call(this)
     }
@@ -99,7 +104,7 @@ _Writable.prototype = {
 }
 
 const Writable = _extend({
-	name: 'Writable',
+  name: 'Writable',
   super: [Stream, _Writable],
   apply: [Stream, _named('Writable', _Writable)]
 })
